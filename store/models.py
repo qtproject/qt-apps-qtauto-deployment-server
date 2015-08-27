@@ -1,0 +1,100 @@
+from django.db import models
+from django.conf import settings
+from django.contrib.auth.models import User
+
+from utilities import packagePath
+
+
+class Category(models.Model):
+    name = models.CharField(max_length = 200)
+    rank = models.SmallIntegerField(unique = True, db_index = True)
+
+    def __unicode__(self):
+        return self.name
+
+    def is_first(self):
+        """
+Returns ``True`` if item is the first one in the menu.
+"""
+        return Category.objects.filter(rank__lt = self.rank).count() == 0
+
+    def is_last(self):
+        """
+Returns ``True`` if item is the last one in the menu.
+"""
+        return Category.objects.filter(rank__gt = self.rank).count() == 0
+
+    def increase_rank(self):
+        """
+Changes position of this item with the next item in the
+menu. Does nothing if this item is the last one.
+"""
+        try:
+            next_item = Category.objects.filter(rank__gt = self.rank)[0]
+        except IndexError:
+            pass
+        else:
+            self.swap_ranks(next_item)
+
+    def decrease_rank(self):
+        """
+Changes position of this item with the previous item in the
+menu. Does nothing if this item is the first one.
+"""
+        try:
+            list = Category.objects.filter(rank__lt = self.rank).reverse()
+            prev_item = list[len(list) - 1]
+        except IndexError:
+            pass
+        else:
+            self.swap_ranks(prev_item)
+
+    def swap_ranks(self, other):
+        """
+Swap positions with ``other`` menu item.
+"""
+        maxrank = 5000
+        print(maxrank)
+        prev_rank, self.rank = self.rank, maxrank
+        self.save()
+        self.rank, other.rank = other.rank, prev_rank
+        other.save()
+        self.save()
+
+class Vendor(models.Model):
+    user = models.ForeignKey(User, primary_key = True)
+    name = models.CharField(max_length = 200)
+    certificate = models.TextField(max_length = 8000)
+
+    def __unicode__(self):
+        return self.name
+
+
+def content_file_name(instance, filename):
+    return packagePath(instance.id)
+
+class App(models.Model):
+    id = models.CharField(max_length = 200, primary_key=True)
+    name = models.CharField(max_length = 200)
+    file = models.FileField(upload_to = content_file_name)
+    vendor = models.ForeignKey(Vendor)
+    category = models.ForeignKey(Category)
+    briefDescription = models.TextField()
+    description = models.TextField()
+    dateAdded = models.DateField(auto_now_add = True)
+    dateModified = models.DateField(auto_now = True)
+    rating = models.FloatField()
+    isTopApp = models.BooleanField(default = False)
+    price = models.DecimalField(decimal_places = 2, max_digits = 8)
+
+    def __unicode__(self):
+        return self.name + " [" + self.id + "]"
+
+    def save(self, *args, **kwargs):
+        try:
+            this = App.objects.get(id=self.id)
+            if this.file != self.file:
+                this.file.delete(save=False)
+        except:
+            pass
+        super(App, self).save(*args, **kwargs)

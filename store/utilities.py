@@ -242,7 +242,7 @@ def parseAndValidatePackageMetadata(packageFile, certificates = []):
     try:
         partFields = { 'header': [ 'applicationId', 'diskSpaceUsed' ],
                        'info':   [ 'id', 'name', 'icon' ],
-                       'footer': [ 'digest', 'developerSignature' ],
+                       'footer': [ 'digest' ],
                        'icon':   [],
                        'digest': [] }
 
@@ -286,15 +286,16 @@ def parseAndValidatePackageMetadata(packageFile, certificates = []):
         if 'storeSignature' in pkgdata['footer']:
             raise Exception('cannot upload a package with an existing storeSignature field')
 
-        if not 'developerSignature' in pkgdata['footer']:
-            raise Exception('cannot upload a package without a developer signature')
+        if not settings.APPSTORE_NO_SECURITY:
+            if not 'developerSignature' in pkgdata['footer']:
+                raise Exception('cannot upload a package without a developer signature')
 
-        certificates = []
-        for certFile in settings.APPSTORE_DEV_VERIFY_CA_CERTIFICATES:
-            with open(certFile, 'rb') as cert:
-               certificates.append(cert.read())
+            certificates = []
+            for certFile in settings.APPSTORE_DEV_VERIFY_CA_CERTIFICATES:
+                with open(certFile, 'rb') as cert:
+                   certificates.append(cert.read())
 
-        verifySignature(pkgdata['footer']['developerSignature'], pkgdata['rawDigest'], certificates)
+            verifySignature(pkgdata['footer']['developerSignature'], pkgdata['rawDigest'], certificates)
 
     except Exception as error:
         raise Exception(str(error))
@@ -336,4 +337,3 @@ def addSignatureToPackage(sourcePackageFile, destinationPackageFile, digest, dev
     yamlContent = yaml.dump_all([{ 'formatVersion': 1, 'formatType': 'am-package-footer'}, { 'storeSignature': base64.encodestring(signature) }], explicit_start=True)
 
     addFileToPackage(sourcePackageFile, destinationPackageFile, '--PACKAGE-FOOTER--store-signature', yamlContent)
-

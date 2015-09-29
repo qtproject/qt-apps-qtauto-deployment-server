@@ -13,6 +13,7 @@ APPSTORE_PLATFORM_ID = 'AM'
 APPSTORE_PLATFORM_VERSION = 1
 APPSTORE_DOWNLOAD_EXPIRY = 10     # in minutes
 APPSTORE_BIND_TO_DEVICE_ID = True # unique downloads for each device
+APPSTORE_NO_SECURITY = True       # ignore developer signatures and do not generate store signatures
 APPSTORE_STORE_SIGN_PKCS12_CERTIFICATE = 'certificates/store.p12'
 APPSTORE_STORE_SIGN_PKCS12_PASSWORD = 'password'
 APPSTORE_DEV_VERIFY_CA_CERTIFICATES = [ 'certificates/ca.crt', 'certificates/devca.crt' ]

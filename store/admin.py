@@ -88,12 +88,7 @@ class AppAdminForm(forms.ModelForm):
         # validate package
         pkgdata = None;
         try:
-            chainOfTrust = []
-            for cert in settings.APPSTORE_DEV_VERIFY_CA_CERTIFICATES:
-                with open(cert, 'rb') as certFile:
-                    chainOfTrust.append(certFile.read())
-
-            pkgdata = parseAndValidatePackageMetadata(file, chainOfTrust)
+            pkgdata = parseAndValidatePackageMetadata(file)
         except Exception as error:
             raise forms.ValidationError(_('Validation error: %s' % str(error)))
 

@@ -125,9 +125,12 @@ def appPurchase(request):
         if not os.path.exists(toPath):
             os.makedirs(toPath)
 
-        with open(fromFilePath, 'rb') as package:
-            pkgdata = parsePackageMetadata(package)
-            addSignatureToPackage(fromFilePath, toPath + toFile, pkgdata['rawDigest'], deviceId)
+        if not settings.APPSTORE_NO_SECURITY:
+            with open(fromFilePath, 'rb') as package:
+                pkgdata = parsePackageMetadata(package)
+                addSignatureToPackage(fromFilePath, toPath + toFile, pkgdata['rawDigest'], deviceId)
+        else:
+            shutil.copyfile(fromFilePath, toPath + toFile)
 
         return JsonResponse({'status': 'ok',
                              'url': request.build_absolute_uri('/app/download/' + toFile),

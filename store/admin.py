@@ -90,8 +90,8 @@ class AppAdminForm(forms.ModelForm):
         try:
             chainOfTrust = []
             for cert in settings.APPSTORE_DEV_VERIFY_CA_CERTIFICATES:
-                with open(cert, 'rb') as file:
-                    chainOfTrust.append(file.read())
+                with open(cert, 'rb') as certFile:
+                    chainOfTrust.append(certFile.read())
 
             pkgdata = parseAndValidatePackageMetadata(file, chainOfTrust)
         except Exception as error:

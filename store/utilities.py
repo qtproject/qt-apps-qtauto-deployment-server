@@ -6,6 +6,7 @@ import sys
 import tarfile
 import tempfile
 import base64
+import os
 
 from M2Crypto import SMIME, BIO, X509
 from OpenSSL.crypto import load_pkcs12, FILETYPE_PEM, dump_privatekey, dump_certificate
@@ -179,12 +180,17 @@ def parsePackageMetadata(packageFile):
 
         if not entry.name.startswith('--PACKAGE-'):
             addToDigest1 = '%s/%s/' % ('D' if entry.isdir() else 'F', 0 if entry.isdir() else entry.size)
-            addToDigest2 = unicode(entry.name, 'utf-8').encode('utf-8')
+            entryName = entry.name
+            if entry.isdir() and entryName.endswith('/'):
+                entryName = entryName[:-1]
+            entryName = os.path.basename(entryName)
+            addToDigest2 = unicode(entryName, 'utf-8').encode('utf-8')
 
-            #print >>sys.stderr, addToDigest1
-            #print >>sys.stderr, addToDigest2
+            ## print >>sys.stderr, addToDigest1
+            ## print >>sys.stderr, addToDigest2
 
-            digest.update(contents)
+            if entry.isfile():
+                digest.update(contents)
             digest.update(addToDigest1)
             digest.update(addToDigest2)
 
@@ -239,66 +245,62 @@ def parsePackageMetadata(packageFile):
 def parseAndValidatePackageMetadata(packageFile, certificates = []):
     pkgdata = parsePackageMetadata(packageFile)
 
-    try:
-        partFields = { 'header': [ 'applicationId', 'diskSpaceUsed' ],
-                       'info':   [ 'id', 'name', 'icon' ],
-                       'footer': [ 'digest' ],
-                       'icon':   [],
-                       'digest': [] }
+    partFields = { 'header': [ 'applicationId', 'diskSpaceUsed' ],
+                   'info':   [ 'id', 'name', 'icon' ],
+                   'footer': [ 'digest' ],
+                   'icon':   [],
+                   'digest': [] }
 
-        for part in partFields.keys():
-            if not part in pkgdata:
-                raise Exception('package metadata is missing the %s part' % part)
-            data = pkgdata[part]
+    for part in partFields.keys():
+        if not part in pkgdata:
+            raise Exception('package metadata is missing the %s part' % part)
+        data = pkgdata[part]
 
-            for field in partFields[part]:
-                if field not in data:
-                    raise Exception('metadata %s is missing in the %s part' % (field, part))
+        for field in partFields[part]:
+            if field not in data:
+                raise Exception('metadata %s is missing in the %s part' % (field, part))
 
-        if pkgdata['header']['applicationId'] != pkgdata['info']['id']:
-            raise Exception('the id fields in --PACKAGE-HEADER-- and info.yaml are different: %s vs. %s' % (pkgdata['header']['applicationId'], pkgdata['info']['id']))
+    if pkgdata['header']['applicationId'] != pkgdata['info']['id']:
+        raise Exception('the id fields in --PACKAGE-HEADER-- and info.yaml are different: %s vs. %s' % (pkgdata['header']['applicationId'], pkgdata['info']['id']))
 
-        error = ''
-        if not isValidDnsName(pkgdata['info']['id'], error):
-            raise Exception('invalid id: %s' % error)
+    error = ''
+    if not isValidDnsName(pkgdata['info']['id'], error):
+        raise Exception('invalid id: %s' % error)
 
-        if pkgdata['header']['diskSpaceUsed'] <= 0:
-            raise Exception('the diskSpaceUsed field in --PACKAGE-HEADER-- is not > 0, but %d' % pkgdata['header']['diskSpaceUsed'])
+    if pkgdata['header']['diskSpaceUsed'] <= 0:
+        raise Exception('the diskSpaceUsed field in --PACKAGE-HEADER-- is not > 0, but %d' % pkgdata['header']['diskSpaceUsed'])
 
-        if type(pkgdata['info']['name']) != type({}):
-            raise Exception('invalid name: not a dictionary')
+    if type(pkgdata['info']['name']) != type({}):
+        raise Exception('invalid name: not a dictionary')
 
-        name = ''
-        if 'en' in pkgdata['info']['name']:
-            name = pkgdata['info']['name']['en']
-        elif 'en_US' in pkgdata['info']['name']:
-            name = pkgdata['info']['name']['en_US']
-        elif len(pkgdata['info']['name']) > 0:
-            name = pkgdata['info']['name'].values()[0]
+    name = ''
+    if 'en' in pkgdata['info']['name']:
+        name = pkgdata['info']['name']['en']
+    elif 'en_US' in pkgdata['info']['name']:
+        name = pkgdata['info']['name']['en_US']
+    elif len(pkgdata['info']['name']) > 0:
+        name = pkgdata['info']['name'].values()[0]
 
-        if len(name) == 0:
-            raise Exception('could not deduce a suitable package name from the info part')
+    if len(name) == 0:
+        raise Exception('could not deduce a suitable package name from the info part')
 
-        pkgdata['storeName'] = name
+    pkgdata['storeName'] = name
 
-        if pkgdata['digest'] != pkgdata['footer']['digest']:
-                raise Exception('digest does not match, is: %s, but should be %s' % (pkgdata['digest'], pkgdata['footer']['digest']))
-        if 'storeSignature' in pkgdata['footer']:
-            raise Exception('cannot upload a package with an existing storeSignature field')
+    if pkgdata['digest'] != pkgdata['footer']['digest']:
+            raise Exception('digest does not match, is: %s, but should be %s' % (pkgdata['digest'], pkgdata['footer']['digest']))
+    if 'storeSignature' in pkgdata['footer']:
+        raise Exception('cannot upload a package with an existing storeSignature field')
 
-        if not settings.APPSTORE_NO_SECURITY:
-            if not 'developerSignature' in pkgdata['footer']:
-                raise Exception('cannot upload a package without a developer signature')
+    if not settings.APPSTORE_NO_SECURITY:
+        if not 'developerSignature' in pkgdata['footer']:
+            raise Exception('cannot upload a package without a developer signature')
 
-            certificates = []
-            for certFile in settings.APPSTORE_DEV_VERIFY_CA_CERTIFICATES:
-                with open(certFile, 'rb') as cert:
-                   certificates.append(cert.read())
+        certificates = []
+        for certFile in settings.APPSTORE_DEV_VERIFY_CA_CERTIFICATES:
+            with open(certFile, 'rb') as cert:
+               certificates.append(cert.read())
 
-            verifySignature(pkgdata['footer']['developerSignature'], pkgdata['rawDigest'], certificates)
-
-    except Exception as error:
-        raise Exception(str(error))
+        verifySignature(pkgdata['footer']['developerSignature'], pkgdata['rawDigest'], certificates)
 
     return pkgdata
 

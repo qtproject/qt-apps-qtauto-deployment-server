@@ -1,6 +1,9 @@
+import os
+
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.files.storage import FileSystemStorage
 
 from utilities import packagePath
 
@@ -70,13 +73,19 @@ class Vendor(models.Model):
         return self.name
 
 
+class OverwriteStorage(FileSystemStorage):
+    def get_available_name(self, name):
+        if self.exists(name):
+            os.remove(os.path.join(settings.MEDIA_ROOT, name))
+        return name
+
 def content_file_name(instance, filename):
     return packagePath(instance.id)
 
 class App(models.Model):
     id = models.CharField(max_length = 200, primary_key=True)
     name = models.CharField(max_length = 200)
-    file = models.FileField(upload_to = content_file_name)
+    file = models.FileField(upload_to = content_file_name, storage = OverwriteStorage())
     vendor = models.ForeignKey(Vendor)
     category = models.ForeignKey(Category)
     briefDescription = models.TextField()

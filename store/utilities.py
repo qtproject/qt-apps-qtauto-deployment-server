@@ -213,7 +213,6 @@ def parsePackageMetadata(packageFile):
             entryName = entry.name
             if entry.isdir() and entryName.endswith('/'):
                 entryName = entryName[:-1]
-            entryName = os.path.basename(entryName)
             addToDigest2 = unicode(entryName, 'utf-8').encode('utf-8')
 
             ## print >>sys.stderr, addToDigest1

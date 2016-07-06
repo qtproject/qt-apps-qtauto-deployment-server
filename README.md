@@ -13,6 +13,8 @@ The reference platform is Debian Jessie and the packages needed there are:
   * python-yaml (3.11)
   * python-django (1.7.9)
   * python-django-common (1.7.9)
+  * python-openssl (0.14)
+  * python-m2crypto (0.21)
 
 Before running the server, make sure to adapt the `APPSTORE_*` settings in
 `appstore/settings.py` to your environment.

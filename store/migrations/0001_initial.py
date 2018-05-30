@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #############################################################################
 ##
 ## Copyright (C) 2016 Pelagicore AG
@@ -48,7 +49,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.CharField(max_length=200, serialize=False, primary_key=True)),
                 ('name', models.CharField(max_length=200)),
-                ('file', models.FileField(upload_to=store.models.content_file_name)),
+                ('file', models.FileField(storage=store.models.OverwriteStorage(), upload_to=store.models.content_file_name)),
                 ('briefDescription', models.TextField()),
                 ('description', models.TextField()),
                 ('dateAdded', models.DateField(auto_now_add=True)),

@@ -40,7 +40,7 @@ https://docs.djangoproject.com/en/1.7/ref/settings/
 """
 
 APPSTORE_MAINTENANCE = False
-APPSTORE_PLATFORM_ID = 'AM'
+APPSTORE_PLATFORM_ID = 'NEPTUNE3'
 APPSTORE_PLATFORM_VERSION = 1
 APPSTORE_DOWNLOAD_EXPIRY = 10     # in minutes
 APPSTORE_BIND_TO_DEVICE_ID = True # unique downloads for each device

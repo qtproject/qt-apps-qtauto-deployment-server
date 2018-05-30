@@ -44,8 +44,21 @@ from store.models import *
 from utilities import parseAndValidatePackageMetadata
 from utilities import iconPath
 
+class CategoryAdminForm(forms.ModelForm):
+    class Meta:
+        exclude = ["id", "rank"]
+
+    def save(self, commit=False):
+        m = super(CategoryAdminForm, self).save(commit)
+        try:
+            test = Category.objects.all().order_by('-rank')[:1].values('rank')[0]['rank'] + 1
+        except:
+            test = 0
+        m.rank = test
+        return m
 
 class CategoryAdmin(admin.ModelAdmin):
+    form = CategoryAdminForm
     list_display = ('name', 'move')
     ordering = ('rank',)
 
@@ -57,7 +70,7 @@ class CategoryAdmin(admin.ModelAdmin):
         return obj.name
     name.short_description = ugettext_lazy('Item caption')
 
-    def move(sefl, obj):
+    def move(self, obj):
         """
         Returns html with links to move_up and move_down views.
         """
@@ -90,7 +103,7 @@ class CategoryAdmin(admin.ModelAdmin):
             item.decrease_rank()
         else:
             raise PermissionDenied
-        return redirect('admin:appstore_category_changelist')
+        return redirect('admin:store_category_changelist')
 
     def move_down(self, request, item_pk):
         """
@@ -102,7 +115,7 @@ class CategoryAdmin(admin.ModelAdmin):
             item.increase_rank()
         else:
             raise PermissionDenied
-        return redirect('admin:appstore_category_changelist')
+        return redirect('admin:store_category_changelist')
 
 
 class AppAdminForm(forms.ModelForm):

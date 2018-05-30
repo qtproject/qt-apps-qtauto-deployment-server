@@ -6,6 +6,14 @@ the Neptune IVI UI and the Pelagicore Application Manager.
 Architecture
 ============
 
+Setting up the server in virtualenv:
+
+virtualenv ./venv
+./venv/bin/pip install -r requirements.txt
+
+(libffi-dev is also needed)
+
+
 The server is based on Python/Django.
 The reference platform is Debian Jessie and the packages needed there are:
 

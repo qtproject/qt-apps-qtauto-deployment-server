@@ -98,9 +98,7 @@ def appList(request):
         apps = apps.filter(name__contains = request.REQUEST['filter'])
     if 'category_id' in request.REQUEST:
         catId = request.REQUEST['category_id']
-        if catId == '0':
-            apps = apps.filter(isTopApp__exact = True)
-        else:
+        if catId != -1: # All metacategory
             apps = apps.filter(category__exact = catId)
 
     appList = list(apps.values('id', 'name', 'vendor__name', 'rating', 'price', 'briefDescription', 'category'))
@@ -186,7 +184,10 @@ def appDownload(request, path):
 
 def categoryList(request):
     # this is not valid JSON, since we are returning a list!
-    return JsonResponse(list(Category.objects.all().order_by('rank').values('id', 'name')), safe = False)
+    allmeta = [{'id': -1, 'name': 'All'}, ] #All metacategory
+    categoryobject = Category.objects.all().order_by('rank').values('id', 'name')
+    categoryobject=allmeta + list(categoryobject)
+    return JsonResponse(categoryobject, safe = False)
 
 
 def categoryIcon(request):
@@ -194,7 +195,7 @@ def categoryIcon(request):
 
     # there are no category icons (yet), so we just return the icon of the first app in this category
     try:
-        app = App.objects.filter(category__exact = request.REQUEST['id']).order_by('-dateModified')[0]
+        app = App.objects.filter(category__exact = request.REQUEST['id']).order_by('-dateModified')[0] #FIXME - the category icon is unimplemented
         with open(iconPath(app.id), 'rb') as iconPng:
             response.write(iconPng.read())
     except:

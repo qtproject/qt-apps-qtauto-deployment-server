@@ -48,21 +48,21 @@ class Category(models.Model):
 
     def is_first(self):
         """
-Returns ``True`` if item is the first one in the menu.
-"""
+        Returns ``True`` if item is the first one in the menu.
+        """
         return Category.objects.filter(rank__lt = self.rank).count() == 0
 
     def is_last(self):
         """
-Returns ``True`` if item is the last one in the menu.
-"""
+        Returns ``True`` if item is the last one in the menu.
+        """
         return Category.objects.filter(rank__gt = self.rank).count() == 0
 
     def increase_rank(self):
         """
-Changes position of this item with the next item in the
-menu. Does nothing if this item is the last one.
-"""
+        Changes position of this item with the next item in the
+        menu. Does nothing if this item is the last one.
+        """
         try:
             next_item = Category.objects.filter(rank__gt = self.rank)[0]
         except IndexError:
@@ -72,9 +72,9 @@ menu. Does nothing if this item is the last one.
 
     def decrease_rank(self):
         """
-Changes position of this item with the previous item in the
-menu. Does nothing if this item is the first one.
-"""
+        Changes position of this item with the previous item in the
+        menu. Does nothing if this item is the first one.
+        """
         try:
             list = Category.objects.filter(rank__lt = self.rank).reverse()
             prev_item = list[len(list) - 1]
@@ -85,10 +85,9 @@ menu. Does nothing if this item is the first one.
 
     def swap_ranks(self, other):
         """
-Swap positions with ``other`` menu item.
-"""
+        Swap positions with ``other`` menu item.
+        """
         maxrank = 5000
-        print(maxrank)
         prev_rank, self.rank = self.rank, maxrank
         self.save()
         self.rank, other.rank = other.rank, prev_rank

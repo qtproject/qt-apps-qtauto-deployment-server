@@ -139,6 +139,8 @@ Checks whether you are using the right Platform and the right API to communicate
 | ---------- | ----------- |
 | `platform` | The platform the client is running on, this sets the architecture of the packages you get. (see `settings.APPSTORE_PLATFORM`) |
 | `version`  | The Deployment Server HTTP API version you are using to communicate with the server. (see `settings.APPSTORE_VERSION`) |
+| `require_tag` | Optional parameter for filtering packages by tags. Receives coma-separated list of tags. Only applications containing any of specified tags should be listed. Tags must be alphanumeric. |
+| `conflicts_tag` | Optional parameter for filtering packages by tags. Receives coma-separated list of tags. No application containing any of the tags should be listed. Tags must be alphanumeric. |
 
 Returns a JSON object:
 
@@ -148,6 +150,7 @@ Returns a JSON object:
 |            | `maintenance` | The Server is in maintenance mode and can't be used at the moment. |
 |            | `incompatible-platform` | You are using an incompatible Platform. |
 |            | `incompatible-version` | You are using an incompatible Version of the API. |
+|            | `malformed-tag` | Tag had wrong format, was not alphanumeric or could not be parsed. |
 
 ## login
 Does a login on the Server with the given username and password. Either a imei or a mac must be provided. This call is needed for downloading apps.

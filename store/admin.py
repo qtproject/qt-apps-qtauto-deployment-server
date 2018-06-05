@@ -118,9 +118,10 @@ class CategoryAdmin(admin.ModelAdmin):
         return redirect('admin:store_category_changelist')
 
 
+
 class AppAdminForm(forms.ModelForm):
     class Meta:
-        exclude = ["id", "name"]
+        exclude = ["id", "name", "tags"]
 
     appId = ""
     name = ""
@@ -175,12 +176,22 @@ class AppAdminForm(forms.ModelForm):
         m = super(AppAdminForm, self).save(commit);
         m.id = self.appId
         m.name = self.name
+
+        m.file.seek(0)
+        pkgdata = parseAndValidatePackageMetadata(m.file)
+        taglist = set()
+        for fields in ('extra','extraSigned'):
+            if fields in pkgdata['header']:
+                if 'tags' in pkgdata['header'][fields]:
+                    tags = set(pkgdata['header'][fields]['tags']) #Fill tags list then add them
+                    taglist = taglist.union(tags)
+        m.tags = ",".join(taglist)
         return m
 
 
 class AppAdmin(admin.ModelAdmin):
     form = AppAdminForm
-    list_display = ('name',)
+    list_display = ('name', 'id')
 
     def save_model(self, request, obj, form, change):
         obj.save()

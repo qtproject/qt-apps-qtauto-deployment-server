@@ -45,6 +45,13 @@ from OpenSSL.crypto import load_pkcs12, FILETYPE_PEM, dump_privatekey, dump_cert
 from django.conf import settings
 
 
+def validateTag(tag):
+    for i in tag:
+        if not i.isalnum():
+            if i != "_":
+                return False
+    return True
+
 def packagePath(appId = None):
     path = settings.MEDIA_ROOT + 'packages/'
     if appId is not None:

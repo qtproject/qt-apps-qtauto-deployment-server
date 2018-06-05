@@ -36,12 +36,13 @@ import shutil
 import json
 
 from django.conf import settings
+from django.db.models import Q
 from django.http import HttpResponse, HttpResponseForbidden, Http404, JsonResponse
 from django.contrib import auth
 from django.template import Context, loader
 
 from models import App, Category, Vendor
-from utilities import parsePackageMetadata, packagePath, iconPath, downloadPath, addSignatureToPackage
+from utilities import parsePackageMetadata, packagePath, iconPath, downloadPath, addSignatureToPackage, validateTag
 
 
 def hello(request):
@@ -54,6 +55,14 @@ def hello(request):
     elif request.REQUEST.get("version", "") != str(settings.APPSTORE_PLATFORM_VERSION):
         status = 'incompatible-version'
 
+    for j in ("require_tag", "conflicts_tag",):
+        if j in request.REQUEST: #Tags are coma-separated,
+            taglist = [i.lower() for i in request.REQUEST[j].split(',') if i]
+            for i in taglist:
+                if not validateTag(i): #Tags must be alphanumeric (or, even better - limited to ASCII alphanumeric)
+                    status = 'malformed-tag'
+                    break
+            request.session[j] = taglist
     return JsonResponse({'status': status})
 
 
@@ -101,11 +110,27 @@ def appList(request):
         if catId != -1: # All metacategory
             apps = apps.filter(category__exact = catId)
 
-    appList = list(apps.values('id', 'name', 'vendor__name', 'briefDescription', 'category'))
+    #Tag filtering
+    #"require_tag", "conflicts_tag"
+    # Tags are combined by logical AND (for require) and logical OR for conflicts
+    if 'require_tag' in request.session:
+        for i in request.session['require_tag']:
+            regex = '(^|,)%s(,|$)' % (i,)
+            apps = apps.filter(Q(tags__regex = regex))
+    if 'conflicts_tag' in request.session:
+        for i in request.session['conflicts_tag']:
+            regex = '(^|,)%s(,|$)' % (i,)
+            apps = apps.filter(~Q(tags__regex = regex))
+
+    appList = list(apps.values('id', 'name', 'vendor__name', 'briefDescription', 'category', 'tags').order_by('id'))
     for app in appList:
         app['category_id'] = app['category']
         app['category'] = Category.objects.all().filter(id__exact = app['category_id'])[0].name
         app['vendor'] = app['vendor__name']
+        if app['tags'] != "":
+            app['tags'] = app['tags'].split(',')
+        else:
+            app['tags'] = []
         del app['vendor__name']
 
     # this is not valid JSON, since we are returning a list!

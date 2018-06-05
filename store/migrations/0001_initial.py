@@ -54,6 +54,7 @@ class Migration(migrations.Migration):
                 ('description', models.TextField()),
                 ('dateAdded', models.DateField(auto_now_add=True)),
                 ('dateModified', models.DateField(auto_now=True)),
+                ('tags', models.TextField(blank=True)),
             ],
             options={
             },

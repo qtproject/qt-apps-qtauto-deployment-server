@@ -122,6 +122,7 @@ class App(models.Model):
     description = models.TextField()
     dateAdded = models.DateField(auto_now_add = True)
     dateModified = models.DateField(auto_now = True)
+    tags = models.TextField(blank=True)
 
     def __unicode__(self):
         return self.name + " [" + self.id + "]"
@@ -134,3 +135,4 @@ class App(models.Model):
         except:
             pass
         super(App, self).save(*args, **kwargs)
+

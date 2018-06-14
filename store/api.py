@@ -63,6 +63,10 @@ def hello(request):
                     status = 'malformed-tag'
                     break
             request.session[j] = taglist
+    if 'architecture' in request.REQUEST:
+        request.session['architecture'] = request.REQUEST['architecture']
+    else:
+        request.session['architecture'] = ''
     return JsonResponse({'status': status})
 
 
@@ -121,8 +125,13 @@ def appList(request):
         for i in request.session['conflicts_tag']:
             regex = '(^|,)%s(,|$)' % (i,)
             apps = apps.filter(~Q(tags__regex = regex))
+    if 'architecture' in request.session:
+        apps = apps.filter(Q(architecture__exact = request.session['architecture'])|Q(architecture__exact = 'All'))
+    else:
+        apps = apps.filter(Q(architecture__exact = 'All'))
 
-    appList = list(apps.values('id', 'name', 'vendor__name', 'briefDescription', 'category', 'tags').order_by('id'))
+    appList = list(apps.values('id', 'name', 'vendor__name', 'briefDescription', 'category', 'tags', 'architecture').order_by('id'))
+
     for app in appList:
         app['category_id'] = app['category']
         app['category'] = Category.objects.all().filter(id__exact = app['category_id'])[0].name

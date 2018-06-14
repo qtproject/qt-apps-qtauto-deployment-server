@@ -123,6 +123,7 @@ class App(models.Model):
     dateAdded = models.DateField(auto_now_add = True)
     dateModified = models.DateField(auto_now = True)
     tags = models.TextField(blank=True)
+    architecture = models.CharField(max_length=20, default='All')
 
     def __unicode__(self):
         return self.name + " [" + self.id + "]"

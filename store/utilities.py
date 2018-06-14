@@ -38,12 +38,13 @@ import tarfile
 import tempfile
 import base64
 import os
+import magic
 
 from M2Crypto import SMIME, BIO, X509
 from OpenSSL.crypto import load_pkcs12, FILETYPE_PEM, dump_privatekey, dump_certificate
 
 from django.conf import settings
-
+import osandarch
 
 def validateTag(tag):
     for i in tag:
@@ -161,7 +162,7 @@ def createSignature(hash, signingCertificatePkcs12, signingCertificatePassword):
 def parsePackageMetadata(packageFile):
     pkgdata = { }
 
-    pkg = tarfile.open(fileobj=packageFile, mode='r:*', encoding='utf-8');
+    pkg = tarfile.open(fileobj=packageFile, mode='r:*', encoding='utf-8')
 
     fileCount = 0
     foundFooter = False
@@ -169,6 +170,11 @@ def parsePackageMetadata(packageFile):
     foundInfo = False
     foundIcon = False
     digest = hashlib.new('sha256')
+    #Init magic sequnce checker
+    ms = magic.Magic()
+    osset = set()
+    archset = set()
+    pkgfmt = set()
 
     for entry in pkg:
         fileCount = fileCount + 1
@@ -223,9 +229,6 @@ def parsePackageMetadata(packageFile):
                 entryName = entryName[:-1]
             addToDigest2 = unicode(entryName, 'utf-8').encode('utf-8')
 
-            ## print >>sys.stderr, addToDigest1
-            ## print >>sys.stderr, addToDigest2
-
             if entry.isfile():
                 digest.update(contents)
             digest.update(addToDigest1)
@@ -254,8 +257,19 @@ def parsePackageMetadata(packageFile):
             pkgdata['icon'] = contents
             foundIcon = True
 
-        elif not foundInfo and not foundInfo and fileCount >= 2:
+        elif not foundInfo and not foundIcon and fileCount >= 2:
             raise Exception('package does not start with info.yaml and icon.png - found %s' % entry.name)
+
+        if fileCount > 2:
+            if contents and entry.isfile():
+                # check for file type here.
+                filemagic = ms.from_buffer(contents)
+                osarch = osandarch.getOsArch(filemagic)
+                if osarch:
+                    osset.add(osarch['os'])
+                    archset.add(osarch['arch'])
+                    pkgfmt.add(osarch['format'])
+                print(entry.name, osarch)
 
     # finished enumerating all files
     try:
@@ -275,6 +289,18 @@ def parsePackageMetadata(packageFile):
     pkgdata['digest'] = digest.hexdigest()
     pkgdata['rawDigest'] = digest.digest()
 
+    if len(osset) > 1:
+        raise Exception('Package can not contain binaries for more than one OS')
+    if len(archset) > 1:
+        raise Exception('Multiple binary architectures detected in package')
+    if len(pkgfmt) > 1:
+        raise Exception('Multiple binary formats detected in package')
+    if (len(osset) == 0) and (len(archset) == 0) and (len(pkgfmt) == 0):
+        pkgdata['architecture'] = 'All'
+    else:
+        pkgdata['architecture'] = list(archset)[0]
+        pkgdata['binfmt'] = 'binfmt_' + list(pkgfmt)[0]
+
     pkg.close()
     return pkgdata
 
@@ -283,7 +309,7 @@ def parseAndValidatePackageMetadata(packageFile, certificates = []):
     pkgdata = parsePackageMetadata(packageFile)
 
     partFields = { 'header': [ 'applicationId', 'diskSpaceUsed' ],
-                   'info':   [ 'id', 'name', 'icon' ],
+                   'info':   [ 'id', 'name', 'icon', 'runtime', 'code' ],
                    'footer': [ 'digest' ],
                    'icon':   [],
                    'digest': [] }

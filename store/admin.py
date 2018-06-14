@@ -121,7 +121,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 class AppAdminForm(forms.ModelForm):
     class Meta:
-        exclude = ["id", "name", "tags"]
+        exclude = ["id", "name", "tags", "architecture"]
 
     appId = ""
     name = ""
@@ -137,8 +137,9 @@ class AppAdminForm(forms.ModelForm):
         except Exception as error:
             raise forms.ValidationError(_('Validation error: %s' % str(error)))
 
-        self.appId = pkgdata['info']['id'];
-        self.name = pkgdata['storeName'];
+        self.appId = pkgdata['info']['id']
+        self.name = pkgdata['storeName']
+        self.architecture = pkgdata['architecture']
 
         try:
             a = App.objects.get(name__exact = self.name)
@@ -176,10 +177,13 @@ class AppAdminForm(forms.ModelForm):
         m = super(AppAdminForm, self).save(commit);
         m.id = self.appId
         m.name = self.name
+        m.architecture = self.architecture
 
         m.file.seek(0)
         pkgdata = parseAndValidatePackageMetadata(m.file)
         taglist = set()
+        if 'binfmt' in pkgdata:
+            taglist.add(pkgdata['binfmt'])
         for fields in ('extra','extraSigned'):
             if fields in pkgdata['header']:
                 if 'tags' in pkgdata['header'][fields]:
@@ -191,7 +195,7 @@ class AppAdminForm(forms.ModelForm):
 
 class AppAdmin(admin.ModelAdmin):
     form = AppAdminForm
-    list_display = ('name', 'id')
+    list_display = ('name', 'id', 'architecture')
 
     def save_model(self, request, obj, form, change):
         obj.save()

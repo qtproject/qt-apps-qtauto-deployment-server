@@ -141,6 +141,7 @@ Checks whether you are using the right Platform and the right API to communicate
 | `version`  | The Deployment Server HTTP API version you are using to communicate with the server. (see `settings.APPSTORE_VERSION`) |
 | `require_tag` | Optional parameter for filtering packages by tags. Receives coma-separated list of tags. Only applications containing any of specified tags should be listed. Tags must be alphanumeric. |
 | `conflicts_tag` | Optional parameter for filtering packages by tags. Receives coma-separated list of tags. No application containing any of the tags should be listed. Tags must be alphanumeric. |
+| `architecture` | Optional parameter for filtering packages by architecture. Receives cpu architecture. If architecture is not specified, only packages showing 'All' architecture are listed. |
 
 Returns a JSON object:
 

@@ -55,6 +55,7 @@ class Migration(migrations.Migration):
                 ('dateAdded', models.DateField(auto_now_add=True)),
                 ('dateModified', models.DateField(auto_now=True)),
                 ('tags', models.TextField(blank=True)),
+                ('architecture', models.CharField(default=b'All', max_length=20)),
             ],
             options={
             },

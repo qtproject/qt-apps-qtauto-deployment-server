@@ -104,9 +104,7 @@ Basic workflow:
     Returns:
     ```
     [{ "category": "Entertainment",
-       "rating": 5.0,
        "name": "Nice App",
-       "price": 0.42,
        "vendor": "Pelagicore",
        "briefDescription": "Nice App is a really nice app.",
        "category_id": 4,
@@ -194,8 +192,6 @@ Returns a JSON array (not an object!). Each field is a JSON object:
 | `id`               | The unique id of the application |
 | `name`             | The name of the application |
 | `vendor`           | The name of the vendor of this application
-| `rating`           | The rating of this application
-| `price`            | The price as floating point number
 | `briedDescription` | A short (one line) description of the application
 | `category`         | The name of the category the application is in
 | `category_id`      | The id of the category the application is in

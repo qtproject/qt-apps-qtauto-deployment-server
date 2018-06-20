@@ -54,9 +54,6 @@ class Migration(migrations.Migration):
                 ('description', models.TextField()),
                 ('dateAdded', models.DateField(auto_now_add=True)),
                 ('dateModified', models.DateField(auto_now=True)),
-                ('rating', models.FloatField()),
-                ('isTopApp', models.BooleanField(default=False)),
-                ('price', models.DecimalField(max_digits=8, decimal_places=2)),
             ],
             options={
             },

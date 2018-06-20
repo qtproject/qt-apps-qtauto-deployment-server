@@ -122,9 +122,6 @@ class App(models.Model):
     description = models.TextField()
     dateAdded = models.DateField(auto_now_add = True)
     dateModified = models.DateField(auto_now = True)
-    rating = models.FloatField()
-    isTopApp = models.BooleanField(default = False)
-    price = models.DecimalField(decimal_places = 2, max_digits = 8)
 
     def __unicode__(self):
         return self.name + " [" + self.id + "]"

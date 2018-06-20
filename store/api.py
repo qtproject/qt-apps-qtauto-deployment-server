@@ -101,9 +101,8 @@ def appList(request):
         if catId != -1: # All metacategory
             apps = apps.filter(category__exact = catId)
 
-    appList = list(apps.values('id', 'name', 'vendor__name', 'rating', 'price', 'briefDescription', 'category'))
+    appList = list(apps.values('id', 'name', 'vendor__name', 'briefDescription', 'category'))
     for app in appList:
-        app['price'] = float(app['price'])
         app['category_id'] = app['category']
         app['category'] = Category.objects.all().filter(id__exact = app['category_id'])[0].name
         app['vendor'] = app['vendor__name']

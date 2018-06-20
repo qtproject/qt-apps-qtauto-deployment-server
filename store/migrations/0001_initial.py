@@ -4,7 +4,7 @@
 ## Copyright (C) 2016 Pelagicore AG
 ## Contact: https://www.qt.io/licensing/
 ##
-## This file is part of the Neptune AppStore Server
+## This file is part of the Neptune Deployment Server
 ##
 ## $QT_BEGIN_LICENSE:GPL-QTAS$
 ## Commercial License Usage

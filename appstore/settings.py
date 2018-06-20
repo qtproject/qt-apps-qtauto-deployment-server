@@ -3,7 +3,7 @@
 ## Copyright (C) 2016 Pelagicore AG
 ## Contact: https://www.qt.io/licensing/
 ##
-## This file is part of the Neptune AppStore Server
+## This file is part of the Neptune Deployment Server
 ##
 ## $QT_BEGIN_LICENSE:GPL-QTAS$
 ## Commercial License Usage
@@ -30,7 +30,7 @@
 #############################################################################
 
 """
-Django settings for appstore project.
+Django settings for deployment server project.
 
 For more information on this file, see
 https://docs.djangoproject.com/en/1.7/topics/settings/

@@ -1,4 +1,4 @@
-This is a PoC appstore server, which can be used together with
+This is a PoC deployment server, which can be used together with
 the Neptune IVI UI and the Pelagicore Application Manager.
 
 **This is a development server only - do NOT use in production.**
@@ -72,7 +72,7 @@ Commands
 HTTP API
 ========
 
-The appstore server exposes a HTTP API to the world. Arguments to the
+The deployment server exposes a HTTP API to the world. Arguments to the
 functions need to be provided using the HTTP GET syntax. The returned data
 will be JSON, PNG or text, depending on the function
 
@@ -138,7 +138,7 @@ Checks whether you are using the right Platform and the right API to communicate
 | Parameter  | Description |
 | ---------- | ----------- |
 | `platform` | The platform the client is running on, this sets the architecture of the packages you get. (see `settings.APPSTORE_PLATFORM`) |
-| `version`  | The Appstore Server HTTP API version you are using to communicate with the server. (see `settings.APPSTORE_VERSION`) |
+| `version`  | The Deployment Server HTTP API version you are using to communicate with the server. (see `settings.APPSTORE_VERSION`) |
 
 Returns a JSON object:
 

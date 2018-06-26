@@ -36,7 +36,7 @@ import shutil
 import json
 
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import HttpResponse, HttpResponseForbidden, Http404, JsonResponse
 from django.contrib import auth
 from django.template import Context, loader
@@ -125,14 +125,32 @@ def appList(request):
         for i in request.session['conflicts_tag']:
             regex = '(^|,)%s(,|$)' % (i,)
             apps = apps.filter(~Q(tags__regex = regex))
-    if 'architecture' in request.session:
-        apps = apps.filter(Q(architecture__exact = request.session['architecture'])|Q(architecture__exact = 'All'))
-    else:
-        apps = apps.filter(Q(architecture__exact = 'All'))
 
-    appList = list(apps.values('id', 'name', 'vendor__name', 'briefDescription', 'category', 'tags', 'architecture').order_by('id'))
+    # Here goes the logic of listing packages when multiple architectures are available
+    # in /hello request, the target architecture is stored in the session. By definition target machine can support
+    # both "All" package architecture and it's native one.
+    # So - here goes filtering by list of architectures
+    archlist = ['All', ]
+    if 'architecture' in request.session:
+        archlist.append(request.session['architecture'])
+    apps = apps.filter(architecture__in = archlist)
+
+    # After filtering, there are potential duplicates in list. And we should prefer native applications to pure qml ones
+    # due to speedups offered.
+    # So - first applications are grouped by appid and numbers of same appids counted. In case where is more than one appid -
+    # there are two variants of application: for 'All' architecture, and for the architecture supported by the target machine.
+    # So, as native apps should be preferred
+    duplicates = (
+        apps.values('appid').order_by().annotate(count_id=Count('id')).filter(count_id__gt=1)
+    )
+    # Here we go over duplicates list and filter out 'All' architecture apps.
+    for duplicate in duplicates:
+        apps = apps.filter(~Q(appid__exact = duplicate['appid'], architecture__exact = 'All')) # if there is native - 'All' architecture apps are excluded
+
+    appList = list(apps.values('appid', 'name', 'vendor__name', 'briefDescription', 'category', 'tags', 'architecture', 'version').order_by('appid','architecture'))
 
     for app in appList:
+        app['id'] = app['appid']
         app['category_id'] = app['category']
         app['category'] = Category.objects.all().filter(id__exact = app['category_id'])[0].name
         app['vendor'] = app['vendor__name']
@@ -141,23 +159,32 @@ def appList(request):
         else:
             app['tags'] = []
         del app['vendor__name']
+        del app['appid']
 
     # this is not valid JSON, since we are returning a list!
     return JsonResponse(appList, safe = False)
 
 
 def appDescription(request):
+    archlist = ['All', ]
+    if 'architecture' in request.session:
+        archlist.append(request.session['architecture'])
     try:
-        app = App.objects.get(id__exact = request.REQUEST['id'])
+        app = App.objects.get(appid__exact = request.REQUEST['id'], architecture__in = archlist).order_by('architecture')
+        app = app.last()
         return HttpResponse(app.description)
     except:
         raise Http404('no such application: %s' % request.REQUEST['id'])
 
 
 def appIcon(request):
+    archlist = ['All', ]
+    if 'architecture' in request.session:
+        archlist.append(request.session['architecture'])
     try:
-        app = App.objects.get(id__exact = request.REQUEST['id'])
-        with open(iconPath(app.id), 'rb') as iconPng:
+        app = App.objects.filter(appid__exact = request.REQUEST['id'], architecture__in = archlist).order_by('architecture')
+        app = app.last()
+        with open(iconPath(app.appid,app.architecture), 'rb') as iconPng:
             response = HttpResponse(content_type = 'image/png')
             response.write(iconPng.read())
             return response
@@ -168,7 +195,9 @@ def appIcon(request):
 def appPurchase(request):
     if not request.user.is_authenticated():
         return HttpResponseForbidden('no login')
-
+    archlist = ['All', ]
+    if 'architecture' in request.session:
+        archlist.append(request.session['architecture'])
     try:
         deviceId = str(request.REQUEST.get("device_id", ""))
         if settings.APPSTORE_BIND_TO_DEVICE_ID:
@@ -177,12 +206,13 @@ def appPurchase(request):
         else:
             deviceId = ''
 
-        app = App.objects.get(id__exact = request.REQUEST['id'])
-        fromFilePath = packagePath(app.id)
+        app = App.objects.filter(appid__exact = request.REQUEST['id'], architecture__in=archlist).order_by('architecture')
+        app = app.last()
+        fromFilePath = packagePath(app.appid, app.architecture)
 
         # we should not use obvious names here, but just hash the string.
         # this would be a nightmare to debug though and this is a development server :)
-        toFile = str(app.id) + '_' + str(request.user.id) + '_' + str(deviceId) + '.appkg'
+        toFile = str(app.appid) + '_' + str(request.user.id) + '_' + str(app.architecture) + '_' + str(deviceId) + '.appkg'
         toPath = downloadPath()
         if not os.path.exists(toPath):
             os.makedirs(toPath)
@@ -229,7 +259,7 @@ def categoryIcon(request):
     # there are no category icons (yet), so we just return the icon of the first app in this category
     try:
         app = App.objects.filter(category__exact = request.REQUEST['id']).order_by('-dateModified')[0] #FIXME - the category icon is unimplemented
-        with open(iconPath(app.id), 'rb') as iconPng:
+        with open(iconPath(app.appid,app.architecture), 'rb') as iconPng:
             response.write(iconPng.read())
     except:
         emptyPng = '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x01\x03\x00\x00\x00%\xdbV\xca\x00\x00\x00\x03PLTE\x00\x00\x00\xa7z=\xda\x00\x00\x00\x01tRNS\x00@\xe6\xd8f\x00\x00\x00\nIDAT\x08\xd7c`\x00\x00\x00\x02\x00\x01\xe2!\xbc3\x00\x00\x00\x00IEND\xaeB`\x82'

@@ -42,35 +42,78 @@
 # PE32+ executable (DLL) (GUI) x86-64, for MS Windows
 # PE32+ executable (GUI) x86-64, for MS Windows
 
+def parseMachO(str):  # os, arch, bits, endianness
+    if " universal " in str:
+        # Universal binary - not supported
+        raise Exception("Universal binaries are not supported in packages")
+    os = "macOS"
+    arch = str.split(' ')
+    arch = arch[2]
+    bits = str.split(' ')[1].replace('-bit', '')
+    endianness = "lsb"
+    return [os, arch, bits, endianness]
+
+
+def parsePE32(str):
+    os = "Windows"
+    arch = str.split(',')
+    arch = arch[0]  # Take first part
+    arch = arch.split(' ')
+    arch = arch[-1]  # Take last element
+    bits = '32'
+    if arch == 'x86-64':
+        bits = '64'
+    if arch == '80386':
+        arch = 'i386'
+    endianness = "lsb"
+    return [os, arch, bits, endianness]
+
+
+def parseElfArch(str, architecture):
+    architecture = architecture.strip()
+    if architecture.startswith("ARM"):
+        if 'aarch64' in architecture:
+            return 'aarch64'
+        if 'armhf' in str:  # this does not work for some reason - from_file() returns longer data than from_buffer() - needs fix
+            return 'armhf'
+    elif architecture.startswith("Intel"):
+        if '80386' in architecture:
+            return 'i386'
+    elif architecture.startswith("IBM S/390"):
+        return 's/390'
+    elif "PowerPC" in architecture:
+        return 'powerpc'
+    return architecture.lower()
+
+
+def parseElf(str):
+    os = "Linux"
+    arch = str.split(',')
+    arch = arch[1]
+    arch = parseElfArch(str, arch)
+    bits = str.split(' ')[1].replace('-bit', '')
+    endianness = str.split(' ')[2].lower()
+    return [os, arch, bits, endianness]
+
+
 def getOsArch(str):
     os = None
     arch = None
+    bits = None
+    endianness = None
     fmt = None
     if str.startswith("ELF "):
-        os = "Linux"
-        arch = str.split(',')
-        arch = arch[1]
         fmt = "elf"
+        os, arch, bits, endianness = parseElf(str)
     elif str.startswith("Mach-O "):
-        os = "macOS"
-        if " universal " in str:
-            # Universal binary - not supported
-            raise Exception("Universal binaries are not supported in packages")
-        else:
-            arch = str.split(' ')
-            arch = arch[2]
-            fmt = "mach_o"
+        fmt = "mach_o"
+        os, arch, bits, endianness = parseMachO(str)
     elif str.startswith("PE32+ ") or str.startswith("PE32 "):
-        os = "Windows"
-        arch = str.split(',')
-        arch = arch[0]  # Take first part
-        arch = arch.split(' ')
-        arch = arch[-1]  # Take last element
         fmt = "pe32"
+        os, arch, bits, endianness = parsePE32(str)
     if arch:
-        arch = arch.replace('_', '-')
-    result = {'os': os, 'arch': arch, 'format': fmt }
+        arch = arch.replace('-', '_')
+    result = [os, arch, endianness, bits, fmt]
     if os:
         return result
-    else:
-        return None
+    return None

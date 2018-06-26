@@ -63,23 +63,23 @@ def makeTagList(pkgdata):
     tags = ','.join(taglist)
     return tags
 
-def packagePath(appId = None):
+def packagePath(appId = None, architecture = None):
     path = settings.MEDIA_ROOT + 'packages/'
-    if appId is not None:
-        return path + appId
+    if (appId is not None) and (architecture is not None):
+        return path + '_'.join([appId, architecture]).replace('/','_').replace('\\','_')
     return path
 
-def iconPath(appId = None):
+def iconPath(appId = None, architecture = None):
     path = settings.MEDIA_ROOT + 'icons/'
-    if appId is not None:
-        return path + appId + '.png'
+    if (appId is not None) and (architecture is not None):
+        return path + '_'.join([appId, architecture]).replace('/','_').replace('\\','_') + '.png'
     return path
 
-def writeTempIcon(appId, icon):
+def writeTempIcon(appId, architecture, icon):
     try:
         if not os.path.exists(iconPath()):
             os.makedirs(iconPath())
-        tempicon = open(iconPath(appId), 'w')
+        tempicon = open(iconPath(appId, architecture), 'w')
         tempicon.write(icon)
         tempicon.flush()
         tempicon.close()
@@ -285,13 +285,18 @@ def parsePackageMetadata(packageFile):
         if fileCount > 2:
             if contents and entry.isfile():
                 # check for file type here.
-                filemagic = ms.from_buffer(contents)
+                fil = tempfile.NamedTemporaryFile() #This sequence is done to facilitate showing full type info
+                fil.write(contents)                 #libmagic refuses to give full information when called with
+                fil.seek(0)                         #from_buffer instead of from_file
+                filemagic = ms.from_file(fil.name)
+                fil.close()
                 osarch = osandarch.getOsArch(filemagic)
-                if osarch:
-                    osset.add(osarch['os'])
-                    archset.add(osarch['arch'])
-                    pkgfmt.add(osarch['format'])
-                print(entry.name, osarch)
+                if osarch: #[os, arch, endianness, bits, fmt]
+                    architecture = '-'.join(osarch[1:])
+                    osset.add(osarch[0])
+                    archset.add(architecture)
+                    pkgfmt.add(osarch[4])
+                    print(entry.name, osarch)
 
     # finished enumerating all files
     try:

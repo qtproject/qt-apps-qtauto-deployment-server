@@ -88,40 +88,32 @@ class Command(BaseCommand):
         description = options['description']
         tags = makeTagList(pkgdata)
 
-        try:
-            a = App.objects.get(name__exact=name)
-            if a.id != pkgdata['info']['id']:
-                raise CommandError(
-                    'Validation error: the same package name (%s) is already used for application %s' % (
-                        name, a.id))
-        except App.DoesNotExist:
-            pass
-
-        success, error = writeTempIcon(appId,pkgdata['icon'])
+        success, error = writeTempIcon(appId, architecture, pkgdata['icon'])
         if not success:
             raise CommandError(error)
 
         exists = False
         app = None
         try:
-            app = App.objects.get(id__exact=appId)
+            app = App.objects.get(appid__exact=appId, architecture__exact= architecture)
             exists = True
         except App.DoesNotExist:
             pass
 
         if exists:
+            app.appid = appId
             app.category = category[0]
             app.vendor = vendor[0]
             app.name = name
             app.tags = tags
             app.description = app.briefDescription = description
             app.architecture = architecture
-            app.file.save(packagePath(appId), ContentFile(packagefile.read()))
+            app.file.save(packagePath(appId, architecture), ContentFile(packagefile.read()))
             app.save()
         else:
             app, created = App.objects.get_or_create(name=name, tags=tags, vendor=vendor[0],
-                                                     category=category[0], id=appId,
+                                                     category=category[0], appid=appId,
                                                      briefDescription=description, description=description,
                                                      architecture=architecture)
-            app.file.save(packagePath(appId), ContentFile(packagefile.read()))
+            app.file.save(packagePath(appId, architecture), ContentFile(packagefile.read()))
             app.save()

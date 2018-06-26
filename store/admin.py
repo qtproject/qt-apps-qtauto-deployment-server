@@ -120,17 +120,17 @@ class CategoryAdmin(admin.ModelAdmin):
 
 class AppAdminForm(forms.ModelForm):
     class Meta:
-        exclude = ["id", "name", "tags", "architecture"]
+        exclude = ["appid", "name", "tags", "architecture", 'version']
 
     appId = ""
     name = ""
 
     def clean(self):
         cleaned_data = super(AppAdminForm, self).clean()
-        file = cleaned_data.get('file');
+        file = cleaned_data.get('file')
 
         # validate package
-        pkgdata = None;
+        pkgdata = None
         try:
             pkgdata = parseAndValidatePackageMetadata(file)
         except Exception as error:
@@ -140,34 +140,29 @@ class AppAdminForm(forms.ModelForm):
         self.name = pkgdata['storeName']
         self.architecture = pkgdata['architecture']
 
-        try:
-            a = App.objects.get(name__exact = self.name)
-            if a.id != pkgdata['info']['id']:
-                raise forms.ValidationError(_('Validation error: the same package name (%s) is already used for application %s' % (self.name, a.id)))
-        except App.DoesNotExist:
-            pass
-
         # check if this really is an update
-        if hasattr(self, 'instance') and self.instance.id:
-            if self.appId != self.instance.id:
-                raise forms.ValidationError(_('Validation error: an update cannot change the application id, tried to change from %s to %s' % (self.instance.id, self.appId)))
+        if hasattr(self, 'instance') and self.instance.appid:
+            if self.appId != self.instance.appid:
+                raise forms.ValidationError(_('Validation error: an update cannot change the application id, tried to change from %s to %s' % (self.instance.appid, self.appId)))
+            elif self.architecture != self.instance.architecture:
+                raise forms.ValidationError(_('Validation error: an update cannot change the application architecture from %s to %s' % (self.instance.architecture, self.architecture)))
         else:
             try:
-                if App.objects.get(id__exact = self.appId):
-                    raise forms.ValidationError(_('Validation error: another application with id %s already exists' % str(self.appId)))
+                if App.objects.get(appid__exact = self.appId, architecture__exact = self.architecture):
+                    raise forms.ValidationError(_('Validation error: another application with id %s and architecture %s already exists' % (str(self.appId), str(self.architecture))))
             except App.DoesNotExist:
                 pass
 
         # write icon into file to serve statically
-        success, error = writeTempIcon(self.appId, pkgdata['icon'])
+        success, error = writeTempIcon(self.appId, self.architecture, pkgdata['icon'])
         if not success:
             raise forms.ValidationError(_(error))
 
         return cleaned_data
 
     def save(self, commit=False):
-        m = super(AppAdminForm, self).save(commit);
-        m.id = self.appId
+        m = super(AppAdminForm, self).save(commit)
+        m.appid = self.appId
         m.name = self.name
         m.architecture = self.architecture
 
@@ -179,7 +174,7 @@ class AppAdminForm(forms.ModelForm):
 
 class AppAdmin(admin.ModelAdmin):
     form = AppAdminForm
-    list_display = ('name', 'id', 'architecture')
+    list_display = ('name', 'appid', 'architecture', 'version')
 
     def save_model(self, request, obj, form, change):
         obj.save()

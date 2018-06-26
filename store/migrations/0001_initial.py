@@ -47,7 +47,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='App',
             fields=[
-                ('id', models.CharField(max_length=200, serialize=False, primary_key=True)),
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('appid', models.CharField(max_length=200)),
                 ('name', models.CharField(max_length=200)),
                 ('file', models.FileField(storage=store.models.OverwriteStorage(), upload_to=store.models.content_file_name)),
                 ('briefDescription', models.TextField()),
@@ -56,6 +57,7 @@ class Migration(migrations.Migration):
                 ('dateModified', models.DateField(auto_now=True)),
                 ('tags', models.TextField(blank=True)),
                 ('architecture', models.CharField(default=b'All', max_length=20)),
+                ('version', models.CharField(default=b'0.0.0', max_length=20)),
             ],
             options={
             },
@@ -94,5 +96,9 @@ class Migration(migrations.Migration):
             name='vendor',
             field=models.ForeignKey(to='store.Vendor'),
             preserve_default=True,
+        ),
+        migrations.AlterUniqueTogether(
+            name='app',
+            unique_together=set([('appid', 'architecture')]),
         ),
     ]

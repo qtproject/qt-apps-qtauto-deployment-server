@@ -110,10 +110,10 @@ class OverwriteStorage(FileSystemStorage):
         return name
 
 def content_file_name(instance, filename):
-    return packagePath(instance.id)
+    return packagePath(instance.appid, instance.architecture)
 
 class App(models.Model):
-    id = models.CharField(max_length = 200, primary_key=True)
+    appid = models.CharField(max_length = 200)
     name = models.CharField(max_length = 200)
     file = models.FileField(upload_to = content_file_name, storage = OverwriteStorage())
     vendor = models.ForeignKey(Vendor)
@@ -124,13 +124,18 @@ class App(models.Model):
     dateModified = models.DateField(auto_now = True)
     tags = models.TextField(blank=True)
     architecture = models.CharField(max_length=20, default='All')
+    version = models.CharField(max_length=20, default='0.0.0')
+
+    class Meta:
+        """Makes the group of id and arch - a unique identifier"""
+        unique_together = (('appid', 'architecture', ),)
 
     def __unicode__(self):
-        return self.name + " [" + self.id + "]"
+        return self.name + " [" + " ".join([self.appid,self.version,self.architecture]) + "]"
 
     def save(self, *args, **kwargs):
         try:
-            this = App.objects.get(id=self.id)
+            this = App.objects.get(appid=self.appid,architecture=self.architecture)
             if this.file != self.file:
                 this.file.delete(save=False)
         except:

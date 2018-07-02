@@ -41,8 +41,7 @@ from django.utils.translation import ugettext as _
 from django.utils.translation import ugettext_lazy
 
 from store.models import *
-from utilities import parseAndValidatePackageMetadata
-from utilities import iconPath
+from utilities import parseAndValidatePackageMetadata, writeTempIcon, makeTagList
 
 class CategoryAdminForm(forms.ModelForm):
     class Meta:
@@ -160,16 +159,9 @@ class AppAdminForm(forms.ModelForm):
                 pass
 
         # write icon into file to serve statically
-        try:
-            if not os.path.exists(iconPath()):
-                os.makedirs(iconPath())
-            tempicon = open(iconPath(self.appId), 'w')
-            tempicon.write(pkgdata['icon'])
-            tempicon.flush()
-            tempicon.close()
-
-        except IOError as error:
-            raise forms.ValidationError(_('Validation error: could not write icon file to media directory: %s' % str(error)))
+        success, error = writeTempIcon(self.appId, pkgdata['icon'])
+        if not success:
+            raise forms.ValidationError(_(error))
 
         return cleaned_data
 
@@ -181,15 +173,7 @@ class AppAdminForm(forms.ModelForm):
 
         m.file.seek(0)
         pkgdata = parseAndValidatePackageMetadata(m.file)
-        taglist = set()
-        if 'binfmt' in pkgdata:
-            taglist.add(pkgdata['binfmt'])
-        for fields in ('extra','extraSigned'):
-            if fields in pkgdata['header']:
-                if 'tags' in pkgdata['header'][fields]:
-                    tags = set(pkgdata['header'][fields]['tags']) #Fill tags list then add them
-                    taglist = taglist.union(tags)
-        m.tags = ",".join(taglist)
+        m.tags = makeTagList(pkgdata)
         return m
 
 

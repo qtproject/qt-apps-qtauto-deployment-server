@@ -53,6 +53,16 @@ def validateTag(tag):
                 return False
     return True
 
+def makeTagList(pkgdata):
+    taglist = set()
+    for fields in ('extra', 'extraSigned'):
+        if fields in pkgdata['header']:
+            if 'tags' in pkgdata['header'][fields]:
+                tags = set(pkgdata['header'][fields]['tags'])  # Fill tags list then add them
+                taglist = taglist.union(tags)
+    tags = ','.join(taglist)
+    return tags
+
 def packagePath(appId = None):
     path = settings.MEDIA_ROOT + 'packages/'
     if appId is not None:
@@ -64,6 +74,18 @@ def iconPath(appId = None):
     if appId is not None:
         return path + appId + '.png'
     return path
+
+def writeTempIcon(appId, icon):
+    try:
+        if not os.path.exists(iconPath()):
+            os.makedirs(iconPath())
+        tempicon = open(iconPath(appId), 'w')
+        tempicon.write(icon)
+        tempicon.flush()
+        tempicon.close()
+        return True, None
+    except IOError as error:
+        return False, 'Validation error: could not write icon file to media directory: %s' % str(error)
 
 def downloadPath():
     return settings.MEDIA_ROOT + 'downloads/'

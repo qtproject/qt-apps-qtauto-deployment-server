@@ -31,12 +31,9 @@
 
 from django.conf.urls import patterns, include, url
 from django.contrib import admin
+import settings
 
-urlpatterns = patterns('',
-    # Examples:
-    # url(r'^$', 'appstore.views.home', name='home'),
-    # url(r'^blog/', include('blog.urls')),
-
+base_urlpatterns = patterns('',
     url(r'^admin/', include(admin.site.urls)),
 
     url(r'^hello$',             'store.api.hello'),
@@ -50,3 +47,13 @@ urlpatterns = patterns('',
     url(r'^category/list$',     'store.api.categoryList'),
     url(r'^category/icon$',     'store.api.categoryIcon'),
 )
+
+
+prefix = '^'
+if settings.URL_PREFIX !='':
+    prefix = prefix + settings.URL_PREFIX + '/'
+
+urlpatterns = patterns('',
+    url(prefix, include(base_urlpatterns)),
+)
+

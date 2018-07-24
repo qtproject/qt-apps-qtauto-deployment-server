@@ -224,8 +224,13 @@ def appPurchase(request):
         else:
             shutil.copyfile(fromFilePath, toPath + toFile)
 
+        if settings.URL_PREFIX != '':
+            downloadUri = '/' + settings.URL_PREFIX + '/app/download/' + toFile
+        else:
+            downloadUri = '/app/download/' + toFile
+
         return JsonResponse({'status': 'ok',
-                             'url': request.build_absolute_uri('/app/download/' + toFile),
+                             'url': request.build_absolute_uri(downloadUri),
                              'expiresIn': int(settings.APPSTORE_DOWNLOAD_EXPIRY) * 60})
 
         # a cronjob runing "manage.py expiredownloads" every settings.APPSTORE_DOWNLOAD_EXPIRY/2

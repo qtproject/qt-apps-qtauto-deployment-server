@@ -122,6 +122,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.7/howto/static-files/
 
+URL_PREFIX = '' # Shouldn't start with '/' in case it is used
+
 STATIC_URL = '/static/'
 
 # Absolute path to the directory that holds media.

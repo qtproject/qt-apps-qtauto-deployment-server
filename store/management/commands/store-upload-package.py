@@ -1,6 +1,7 @@
 #############################################################################
 ##
 ## Copyright (C) 2018 Luxoft
+## Contact: https://www.qt.io/licensing/
 ##
 ## This file is part of the Neptune Deployment Server
 ##

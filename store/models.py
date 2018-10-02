@@ -36,7 +36,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.storage import FileSystemStorage
 
-from utilities import packagePath
+from utilities import packagePath, writeTempIcon, makeTagList
 
 
 class Category(models.Model):
@@ -142,3 +142,39 @@ class App(models.Model):
             pass
         super(App, self).save(*args, **kwargs)
 
+
+def savePackageFile(pkgdata, pkgfile, category, vendor, description, shortdescription):
+    appId = pkgdata['info']['id']
+    name = pkgdata['storeName']
+    architecture = pkgdata['architecture']
+    tags = makeTagList(pkgdata)
+    success, error = writeTempIcon(appId, architecture, pkgdata['icon'])
+    if not success:
+        raise Exception(error)
+
+    exists = False
+    app = None
+    try:
+        app = App.objects.get(appid__exact=appId, architecture__exact=architecture)
+        exists = True
+    except App.DoesNotExist:
+        pass
+
+    if exists:
+        app.appid = appId
+        app.category = category
+        app.vendor = vendor
+        app.name = name
+        app.tags = tags
+        app.description = description
+        app.briefDescription = shortdescription
+        app.architecture = architecture
+        app.file.save(packagePath(appId, architecture), pkgfile)
+        app.save()
+    else:
+        app, created = App.objects.get_or_create(name=name, tags=tags, vendor=vendor,
+                                                 category=category, appid=appId,
+                                                 briefDescription=shortdescription, description=description,
+                                                 architecture=architecture)
+        app.file.save(packagePath(appId, architecture), pkgfile)
+        app.save()

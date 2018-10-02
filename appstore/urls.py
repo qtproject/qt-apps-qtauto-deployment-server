@@ -46,6 +46,7 @@ base_urlpatterns = patterns('',
     url(r'^app/download/(.*)$', 'store.api.appDownload'),
     url(r'^category/list$',     'store.api.categoryList'),
     url(r'^category/icon$',     'store.api.categoryIcon'),
+    url(r'^upload$',            'store.api.upload'),
 )
 
 

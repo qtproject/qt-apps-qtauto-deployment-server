@@ -30,19 +30,19 @@
 #############################################################################
 
 import os
-import tempfile
-import datetime
 import shutil
-import json
 
 from django.conf import settings
 from django.db.models import Q, Count
 from django.http import HttpResponse, HttpResponseForbidden, Http404, JsonResponse
 from django.contrib import auth
 from django.template import Context, loader
+from django.views.decorators.csrf import csrf_exempt
+from authdecorators import logged_in_or_basicauth, is_staff_member
 
-from models import App, Category, Vendor
-from utilities import parsePackageMetadata, packagePath, iconPath, downloadPath, addSignatureToPackage, validateTag
+from models import App, Category, Vendor, savePackageFile
+from utilities import parsePackageMetadata, parseAndValidatePackageMetadata, addSignatureToPackage
+from utilities import packagePath, iconPath, downloadPath, validateTag
 
 
 def hello(request):
@@ -102,6 +102,56 @@ def logout(request):
         status = 'failed'
     logout(request)
 
+    return JsonResponse({'status': status})
+
+
+@csrf_exempt
+@logged_in_or_basicauth()
+@is_staff_member()
+def upload(request):
+    status = 'ok'
+    try:
+        try:
+            description = request.REQUEST["description"]
+        except:
+            raise Exception('no description')
+        try:
+            shortdescription = request.REQUEST["short-description"]
+        except:
+            raise Exception('no short description')
+        try:
+            category_name = request.REQUEST["category"]
+        except:
+            raise Exception('no category')
+        try:
+            vendor_name = request.REQUEST["vendor"]
+        except:
+            raise Exception('no vendor')
+
+        if request.method == 'POST' and request.FILES['package']:
+            myfile = request.FILES['package']
+            category = Category.objects.all().filter(name__exact=category_name)
+            vendor = Vendor.objects.all().filter(name__exact=vendor_name)
+            if len(category) == 0:
+                raise Exception('Non-existing category')
+            if len(vendor) == 0:
+                raise Exception('Non-existing vendor')
+
+            try:
+                pkgdata = parseAndValidatePackageMetadata(myfile)
+            except:
+                raise Exception('Package validation failed')
+
+            myfile.seek(0)
+            try:
+                savePackageFile(pkgdata, myfile, category[0], vendor[0], description, shortdescription)
+            except Exception as error:
+                raise Exception(error)
+        else:
+            raise Exception('no package to upload')
+
+    except Exception as error:
+        status = str(error)
     return JsonResponse({'status': status})
 
 

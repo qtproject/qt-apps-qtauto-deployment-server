@@ -33,8 +33,8 @@ import os
 
 from django.core.management.base import BaseCommand, CommandError
 from django.core.files.base import ContentFile
-from store.models import App, Category, Vendor
-from store.utilities import parseAndValidatePackageMetadata, packagePath, makeTagList, writeTempIcon
+from store.models import App, Category, Vendor, savePackageFile
+from store.utilities import parseAndValidatePackageMetadata
 from optparse import make_option
 
 
@@ -83,38 +83,9 @@ class Command(BaseCommand):
             return 0
 
         packagefile.seek(0)
-        appId = pkgdata['info']['id']
-        name = pkgdata['storeName']
-        architecture = pkgdata['architecture']
         description = options['description']
-        tags = makeTagList(pkgdata)
-
-        success, error = writeTempIcon(appId, architecture, pkgdata['icon'])
-        if not success:
+        try:
+            savePackageFile(pkgdata, ContentFile(packagefile.read()), category[0], vendor[0], description, description)
+        except Exception as error:
             raise CommandError(error)
 
-        exists = False
-        app = None
-        try:
-            app = App.objects.get(appid__exact=appId, architecture__exact= architecture)
-            exists = True
-        except App.DoesNotExist:
-            pass
-
-        if exists:
-            app.appid = appId
-            app.category = category[0]
-            app.vendor = vendor[0]
-            app.name = name
-            app.tags = tags
-            app.description = app.briefDescription = description
-            app.architecture = architecture
-            app.file.save(packagePath(appId, architecture), ContentFile(packagefile.read()))
-            app.save()
-        else:
-            app, created = App.objects.get_or_create(name=name, tags=tags, vendor=vendor[0],
-                                                     category=category[0], appid=appId,
-                                                     briefDescription=description, description=description,
-                                                     architecture=architecture)
-            app.file.save(packagePath(appId, architecture), ContentFile(packagefile.read()))
-            app.save()

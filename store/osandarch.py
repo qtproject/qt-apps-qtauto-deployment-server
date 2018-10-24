@@ -42,6 +42,8 @@
 # PE32+ executable (DLL) (GUI) x86-64, for MS Windows
 # PE32+ executable (GUI) x86-64, for MS Windows
 
+import re
+
 def parseMachO(str):  # os, arch, bits, endianness
     if " universal " in str:
         # Universal binary - not supported
@@ -50,7 +52,7 @@ def parseMachO(str):  # os, arch, bits, endianness
     arch = str.split(' ')
     arch = arch[2]
     bits = str.split(' ')[1].replace('-bit', '')
-    endianness = "lsb"
+    endianness = "little_endian"
     return [os, arch, bits, endianness]
 
 
@@ -65,24 +67,28 @@ def parsePE32(str):
         bits = '64'
     if arch == '80386':
         arch = 'i386'
-    endianness = "lsb"
+    endianness = "little_endian"
     return [os, arch, bits, endianness]
 
 
-def parseElfArch(str, architecture):
+def parseElfArch(str, architecture, bits):
     architecture = architecture.strip()
     if architecture.startswith("ARM"):
         if 'aarch64' in architecture:
-            return 'aarch64'
+            return 'arm64'
         if 'armhf' in str:  # this does not work for some reason - from_file() returns longer data than from_buffer() - needs fix
-            return 'armhf'
+            return 'arm'    # because qt does not report it directly
     elif architecture.startswith("Intel"):
         if '80386' in architecture:
             return 'i386'
     elif architecture.startswith("IBM S/390"):
         return 's/390'
     elif "PowerPC" in architecture:
-        return 'powerpc'
+        if bits == "64":
+            return "power64"
+        else:
+            return 'power'
+    # sparc architecture is currently ignored (should be handled similar to power?)
     return architecture.lower()
 
 
@@ -90,9 +96,15 @@ def parseElf(str):
     os = "Linux"
     arch = str.split(',')
     arch = arch[1]
-    arch = parseElfArch(str, arch)
     bits = str.split(' ')[1].replace('-bit', '')
-    endianness = str.split(' ')[2].lower()
+    arch = parseElfArch(str, arch, bits)
+    endian = str.split(' ')[2].lower()
+    if endian == "msb":
+        endianness = "big_endian"
+    elif endian == "lsb":
+        endianness = "little_endian"
+    else:
+        raise Exception("Unrecognised endianness")
     return [os, arch, bits, endianness]
 
 
@@ -117,3 +129,26 @@ def getOsArch(str):
     if os:
         return result
     return None
+
+def normalizeArch(inputArch):
+    """
+        This function brings requested architecture to common form (currently just parses the bits part and turns it into 32/64)
+        Input string format is: arch-endianness-word_size-kernelType
+
+    """
+    parts = inputArch.split('-')
+    #Drop anything non-numeric from word_size field
+    parts[2]=re.sub(r"\D", "", parts[2])
+    #Transform kernelType into binary format
+    temp = parts[3]
+    if "win" in temp:
+        parts[3]="pe32"
+    elif "linux" in  temp:
+        parts[3]="elf"
+    elif "freebsd" in temp: #How do we treat QNX?
+        parts[3]="elf"
+    elif "darwin" in temp:
+        parts[3]="mach_o"
+    #Rejoin new architecture
+    arch = '-'.join(parts)
+    return arch

@@ -43,6 +43,7 @@ from authdecorators import logged_in_or_basicauth, is_staff_member
 from models import App, Category, Vendor, savePackageFile
 from utilities import parsePackageMetadata, parseAndValidatePackageMetadata, addSignatureToPackage
 from utilities import packagePath, iconPath, downloadPath, validateTag
+from osandarch import normalizeArch
 
 
 def hello(request):
@@ -64,7 +65,7 @@ def hello(request):
                     break
             request.session[j] = taglist
     if 'architecture' in request.REQUEST:
-        request.session['architecture'] = request.REQUEST['architecture']
+        request.session['architecture'] = normalizeArch(request.REQUEST['architecture'])
     else:
         request.session['architecture'] = ''
     return JsonResponse({'status': status})

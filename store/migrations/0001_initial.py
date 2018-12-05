@@ -99,6 +99,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='app',
-            unique_together=set([('appid', 'architecture')]),
+            unique_together=set([('appid', 'architecture', 'tags')]),
         ),
     ]

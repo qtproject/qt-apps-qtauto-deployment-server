@@ -42,8 +42,8 @@ from authdecorators import logged_in_or_basicauth, is_staff_member
 
 from models import App, Category, Vendor, savePackageFile
 from utilities import parsePackageMetadata, parseAndValidatePackageMetadata, addSignatureToPackage
-from utilities import packagePath, iconPath, downloadPath, validateTag
-from osandarch import normalizeArch
+from utilities import packagePath, iconPath, downloadPath
+from tags import SoftwareTagList
 
 
 def hello(request):
@@ -58,12 +58,11 @@ def hello(request):
 
     for j in ("require_tag", "conflicts_tag",):
         if j in request.REQUEST: #Tags are coma-separated,
-            taglist = [i.lower() for i in request.REQUEST[j].split(',') if i]
-            for i in taglist:
-                if not validateTag(i): #Tags must be alphanumeric (or, even better - limited to ASCII alphanumeric)
-                    status = 'malformed-tag'
-                    break
-            request.session[j] = taglist
+            versionmap = SoftwareTagList()
+            if not versionmap.parse(request.REQUEST[j]):
+                status = 'malformed-tag'
+                break
+            request.session[j] = str(versionmap)
     if 'architecture' in request.REQUEST:
         request.session['architecture'] = normalizeArch(request.REQUEST['architecture'])
     else:
@@ -169,13 +168,15 @@ def appList(request):
     #"require_tag", "conflicts_tag"
     # Tags are combined by logical AND (for require) and logical OR for conflicts
     if 'require_tag' in request.session:
-        for i in request.session['require_tag']:
-            regex = '(^|,)%s(,|$)' % (i,)
-            apps = apps.filter(Q(tags__regex = regex))
+        require_tags = SoftwareTagList()
+        require_tags.parse(request.session['require_tag'])
+        for i in require_tags.make_regex():
+            apps = apps.filter(Q(tags__regex = i))
     if 'conflicts_tag' in request.session:
-        for i in request.session['conflicts_tag']:
-            regex = '(^|,)%s(,|$)' % (i,)
-            apps = apps.filter(~Q(tags__regex = regex))
+        conflict_tags = SoftwareTagList()
+        conflict_tags.parse(request.session['conflicts_tag'])
+        for i in conflict_tags.make_regex():
+            apps = apps.filter(~Q(tags__regex=i))
 
     # Here goes the logic of listing packages when multiple architectures are available
     # in /hello request, the target architecture is stored in the session. By definition target machine can support

@@ -174,7 +174,7 @@ class AppAdminForm(forms.ModelForm):
 
 class AppAdmin(admin.ModelAdmin):
     form = AppAdminForm
-    list_display = ('name', 'appid', 'architecture', 'version')
+    list_display = ('name', 'appid', 'architecture', 'version', 'tags')
 
     def save_model(self, request, obj, form, change):
         obj.save()

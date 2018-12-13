@@ -1,0 +1,11 @@
+include($QT_INSTALL_DOCS/global/qt-module-defaults-online.qdocconf)
+
+# Add an .html file with sidebar content, used in the online style
+# HTML.stylesheets               += style/qt5-sidebar.html
+
+# override defaults for Qt module documentation
+HTML.nosubdirs = "false"
+HTML.outputsubdir = "qtauto-deployment-server"
+
+include(../qtautodeploymentserver-project.qdocconf)
+

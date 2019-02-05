@@ -29,43 +29,66 @@
 /*!
     \page qtauto-deployment-server-index.html
     \title Qt Automotive Suite Deployment Server
-    Qt Automotive Suite Deployment server is a reference implementation of a network resource for
-    hosting and distributing applications in projects based on Qt Application Manager.
-    Even though the deployment server can be used in the field for real products, the main purpose
-    for it is helping development and integration teams to simplify development and testing of
-    applications on target system.
 
-    When implementing the deployment server, certain assumptions were made.
+    The Qt Automotive Suite Deployment Server is a new component in the Qt Automotive Suite 5.12.
+    Previously, it was known as the Neptune Appstore and used for demonstrations purposes.
+
+    This component is a lightweight HTTP server that provides network feeds to application packages
+    that are available for installation by a Qt Application Manager instance, running on a target
+    device connected to a network. The UI counterpart for the Deployment Server is the Downloads app
+    in the Neptune 3 UI. Together, the Deployment Server and the Downloads app enable you to install
+    different apps that are available in the server via network.
+
+    The key scenario for these components is to install apps during the integration testing
+    process. Additionally, the code can also be used as a reference implementation for a
+    fully-featured server, and a new Downloads app on the target device for production.
+
+    The Deployment Server works with the Application Installer in the Qt Application Manager and
+    acts as an installation source for \c{http://} and \c{https://} schemes. In addition to
+    application packages, the Deployment Server also hosts meta information about each package,
+    that is used by the Downloads app to visualize the choices available for the user to select.
+    This meta information is stored in the form of tags and other information in the package
+    header, according to the Qt Application Manager’s package format. When a package is uploaded
+    to the server, the package header is parsed, associated with that package, and then sent to a
+    Downloads app, that queries for a list of available apps. Using this information, a Downloads
+    app can inform users about apps that are available and even hide those that are not compatible
+    with the target installation. The figure below illustrates this installation scenario.
+
+    \image deployment-server-installation-handshake.png "Install an App via the Deployment Server"
+
+    The Deployment Server is implemented in Python, using Django, based on the following assumptions.
+
     \section1 Assumptions
 
     \list
-        \li Applications are identified by a group of: Application ID, version, architecture and tags.
-        Such groups are unique.
-        \li Architecture is specified as a group of: CPU architecture, endianness, bitness and OS.
+        \li Applications are identified with a group of: Application ID, version, architecture, and tags;
+        these groups are unique.
+        \li Architecture is specified as a group of: CPU architecture, endianness, bitness, and OS.
         If a package does not contain architecture specific parts, the architecture is specified as \e{All}.
-        \li CPU architecture is taken as returned by QsysInfo::buildCpuArchitecture().
-        \li As it is hard to determine the OS for uploaded packages, they are matched by binary format.
-        Thus, requesting anything Unix-like will give packages with ELF binaries, anything Windows related
-        will return packages with PE32 format binaries and packages with Mach_o binaries are returned
-        for Apple products. See \l {http://doc.qt.io/qt-5/qsysinfo.html#kernelType} {QSysInfo::kernelType()} for more details.
-        \li When native and non-native applications match selection criteria, the native application is preferred.
-        \li Applications can be further filtered by tags, both as positive (must have) and negative
-        (must not have) filters.
-        \li Tags are considered alphanumeric and can contain lowercase Latin letters, numbers and
+        \li CPU architecture is based on the return value from QsysInfo::buildCpuArchitecture().
+        \li The installation target is automatically determined by parsing binary files. For example,
+        detecting an ELF binary means that it's a Linux package; the CPU architecture, such as armv8,
+        further defines the installation target.
+        See \l {https://doc.qt.io/qt-5/qsysinfo.html#kernelType} {QSysInfo::kernelType()} for more details.
+        \li If both native and non-native applications match the selection criteria, then the native application
+        is preferred.
+        \li Applications can be further filtered by tags, both as positive (inlucde) and negative (exclude)
+        filters.
+        \li Tags are considered alphanumeric and can contain lowercase Latin letters, numbers, and
         the underscore symbol. All tags passed to the server are converted to lowercase.
-        \li Tags can optionally have a version. The version number is separated from tag by a colon (:). The version follows the same
-        limitations as the tag.
-        \li Tags are matched according to versions (when requesting version 5.12, it will match 5.12.0, but not vice versa).
-        Also, when requesting a non-versioned tag - any version will match.
-        \li Tag lists in requests and packages are simplified (so qt:5.12,qt:5.12.0 will end up as qt:5.12)
-        \li \l {https://doc.qt.io/QtApplicationManager/manifest.html#basic-manifest} {Application manifest}
-        allows for any number of categories assigned to application. Deployment server currently
-        ignores categories in application manifest and requires manual assignment of exactly one
-        category to the application. This behavior can be discussed with nzamotaev@luxoft.com .
-        \li Tag information is parsed from package header's \b{extra} and \b{extraSigned} parts,
+        \li Tags can also have an optional version. The version number is separated from tag using a colon (:).
+        Similar to tags, the version can contain lowercase Latin letters, numbers, and the underscore symbol.
+        \li Tags are matched according to versions. For example, if you request for "version 5.12", this matches
+        with "5.12.0", but not vice versa. If you request for a non-versioned tag, any version matches your request.
+        \li Tag lists in requests and packages are simplified. For example, "qt:5.12,qt:5.12.0" is reduced to "qt:5.12".
+        \li Although the \l {https://doc.qt.io/QtApplicationManager/manifest.html#basic-manifest} {Application manifest}
+        allows for any number of categories to be assigned to an application, currently, the Deployment Server
+        requires manual assignment of only one category to the application. Categories in the application manifest
+        are ignored.
+        \li Tag information is parsed from the package header's \b{extra} and \b{extraSigned} parts,
         from \b{tags} array. All elements of that array are added to package’s tag list.
-        \li Every package has a version number. If the manifest does not contain a version field,
-        the version number will be assigned “0.0.0”.
+        \li Each package has a version number. If the manifest does not contain a version field, a default
+        version "0.0.0" is assigned.
     \endlist
 
     \section1 API

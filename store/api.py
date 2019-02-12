@@ -50,7 +50,6 @@ from tags import SoftwareTagList
 
 def hello(request):
     status = 'ok'
-
     if settings.APPSTORE_MAINTENANCE:
         status = 'maintenance'
     elif getRequestDictionary(request).get("platform", "") != str(settings.APPSTORE_PLATFORM_ID):
@@ -308,7 +307,7 @@ def appDownload(request, path):
 def categoryList(request):
     # this is not valid JSON, since we are returning a list!
     allmeta = [{'id': -1, 'name': 'All'}, ] #All metacategory
-    categoryobject = Category.objects.all().order_by('rank').values('id', 'name')
+    categoryobject = Category.objects.all().order_by('order').values('id', 'name')
     categoryobject=allmeta + list(categoryobject)
     return JsonResponse(categoryobject, safe = False)
 
@@ -316,14 +315,26 @@ def categoryList(request):
 def categoryIcon(request):
     response = HttpResponse(content_type = 'image/png')
     categoryId = getRequestDictionary(request)['id']
-
-    # there are no category icons (yet), so we just return the icon of the first app in this category
     try:
-        app = App.objects.filter(category__exact = categoryId).order_by('-dateModified')[0] #FIXME - the category icon is unimplemented
-        with open(iconPath(app.appid,app.architecture), 'rb') as iconPng:
-            response.write(iconPng.read())
+        if categoryId != '-1':
+            category = Category.objects.filter(id__exact = categoryId)[0]
+            filename = iconPath() + "category_" + str(category.id) + ".png"
+        else:
+            from django.contrib.staticfiles import finders
+            filename = finders.find('img/category_All.png')
+        with open(filename, 'rb') as icon:
+            response.write(icon.read())
+            response['Content-Length'] = icon.tell()
+
     except:
-        emptyPng = '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x01\x03\x00\x00\x00%\xdbV\xca\x00\x00\x00\x03PLTE\x00\x00\x00\xa7z=\xda\x00\x00\x00\x01tRNS\x00@\xe6\xd8f\x00\x00\x00\nIDAT\x08\xd7c`\x00\x00\x00\x02\x00\x01\xe2!\xbc3\x00\x00\x00\x00IEND\xaeB`\x82'
+        # In case there was error in searching for category,
+        # return this image:
+        # +-----+
+        # |     |
+        # |Error|
+        # |     |
+        # +-----+
+        emptyPng  = "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00 \x00\x00\x00 \x01\x03\x00\x00\x00I\xb4\xe8\xb7\x00\x00\x00\x06PLTE\x00\x00\x00\x00\x00\x00\xa5\x67\xb9\xcf\x00\x00\x00\x01tRNS\x00@\xe6\xd8f\x00\x00\x00\x33IDAT\x08\xd7\x63\xf8\x0f\x04\x0c\x0d\x0c\x0c\x8c\x44\x13\x7f\x40\xc4\x01\x10\x71\xb0\xf4\x5c\x2c\xc3\xcf\x36\xc1\x44\x86\x83\x2c\x82\x8e\x48\xc4\x5f\x16\x3e\x47\xd2\x0c\xc5\x46\x80\x9c\x06\x00\xa4\xe5\x1d\xb4\x8e\xae\xe8\x43\x00\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82"
         response.write(emptyPng)
 
     return response

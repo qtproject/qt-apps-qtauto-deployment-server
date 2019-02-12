@@ -33,34 +33,51 @@
 import os
 
 from django import forms
-from django.conf import settings
-from django.conf.urls import include, url
 from django.contrib import admin
-from django.core.exceptions import PermissionDenied
-from django.shortcuts import redirect, get_object_or_404
 from django.utils.translation import ugettext as _
 from django.utils.translation import ugettext_lazy
+from ordered_model.admin import OrderedModelAdmin
+from django.core.files.uploadedfile import InMemoryUploadedFile
 
 from store.models import *
 from utilities import parseAndValidatePackageMetadata, writeTempIcon, makeTagList
+import StringIO
 
 class CategoryAdminForm(forms.ModelForm):
     class Meta:
         exclude = ["id", "rank"]
 
     def save(self, commit=False):
-        m = super(CategoryAdminForm, self).save(commit)
-        try:
-            test = Category.objects.all().order_by('-rank')[:1].values('rank')[0]['rank'] + 1
-        except:
-            test = 0
-        m.rank = test
+        m = super(CategoryAdminForm, self).save(commit=False)
         return m
 
-class CategoryAdmin(admin.ModelAdmin):
+    def clean(self):
+        cleaned_data = super(CategoryAdminForm, self).clean()
+        #Icon fixing (resize, turn monochrome, add alpha channel)
+        if cleaned_data['icon']:
+            if settings.ICON_DECOLOR:
+                # make image monochrome + alpha channel, this is done to compensate for
+                # how icons are treated in neptune3-ui
+                im = Image.open(cleaned_data['icon'])
+                grey, alpha = im.convert('LA').split()
+                grey = ImageChops.invert(grey)
+                im.putalpha(grey)
+                im = im.convert('LA')
+            else:
+                # No conversion, icons are uploaded as-is, only scaling is used.
+                im = Image.open(cleared_data['icon'])
+            size = (settings.ICON_SIZE_X,settings.ICON_SIZE_Y,)
+            im.thumbnail(size, Image.ANTIALIAS)
+            imagefile = StringIO.StringIO()
+            im.save(imagefile, format='png')
+            imagefile.seek(0)
+            cleaned_data['icon'] = InMemoryUploadedFile(imagefile, 'icon', "icon.png", 'image/png', imagefile.len, None)
+        return cleaned_data
+
+class CategoryAdmin(OrderedModelAdmin):
     form = CategoryAdminForm
-    list_display = ('name', 'move')
-    ordering = ('rank',)
+    list_display = ('name', 'icon_image', 'move_up_down_links')
+    ordering = ('order',)
 
     def save_model(self, request, obj, form, change):
         obj.save()
@@ -70,53 +87,14 @@ class CategoryAdmin(admin.ModelAdmin):
         return obj.name
     name.short_description = ugettext_lazy('Item caption')
 
-    def move(self, obj):
-        """
-        Returns html with links to move_up and move_down views.
-        """
-        button = u'<a href="%s"><img src="%simg/admin/arrow-%s.gif" /> %s</a>'
-        prefix = settings.STATIC_URL
-
-        link = '%d/move_up/' % obj.pk
-        html = button % (link, prefix, 'up', _('up')) + " | "
-        link = '%d/move_down/' % obj.pk
-        html += button % (link, prefix, 'down', _('down'))
+    def icon_image(self, obj):
+        prefix = settings.URL_PREFIX
+        image_request = prefix + "/category/icon?id=%s" % (obj.id)
+        html = u'<img width=%s height=%s src="%s" />' % (settings.ICON_SIZE_X, settings.ICON_SIZE_Y, image_request)
         return html
-    move.allow_tags = True
-    move.short_description = ugettext_lazy('Move')
 
-    def get_urls(self):
-        admin_view = self.admin_site.admin_view
-        urls = [
-            url(r'^(?P<item_pk>\d+)/move_up/$', admin_view(self.move_up)),
-            url(r'^(?P<item_pk>\d+)/move_down/$', admin_view(self.move_down)),
-        ]
-        return urls + super(CategoryAdmin, self).get_urls()
-
-    def move_up(self, request, item_pk):
-        """
-        Decrease rank (change ordering) of the menu item with
-        id=``item_pk``.
-        """
-        if self.has_change_permission(request):
-            item = get_object_or_404(Category, pk=item_pk)
-            item.decrease_rank()
-        else:
-            raise PermissionDenied
-        return redirect('admin:store_category_changelist')
-
-    def move_down(self, request, item_pk):
-        """
-        Increase rank (change ordering) of the menu item with
-        id=``item_pk``.
-        """
-        if self.has_change_permission(request):
-            item = get_object_or_404(Category, pk=item_pk)
-            item.increase_rank()
-        else:
-            raise PermissionDenied
-        return redirect('admin:store_category_changelist')
-
+    icon_image.allow_tags = True
+    icon_image.short_description = ugettext_lazy('Category icon')
 
 
 class AppAdminForm(forms.ModelForm):

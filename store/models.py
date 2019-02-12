@@ -31,69 +31,50 @@
 #############################################################################
 
 import os
+from PIL import Image, ImageChops
 
 from django.db import models
+from ordered_model.models import OrderedModel
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.storage import FileSystemStorage
+from django.db.models.fields.files import ImageFieldFile
 
 from utilities import packagePath, writeTempIcon, makeTagList
 
+def category_file_name(instance, filename):
+    # filename parameter is unused. See django documentation for details:
+    # https://docs.djangoproject.com/en/1.11/ref/models/fields/#django.db.models.FileField.upload_to
+    return settings.MEDIA_ROOT + "icons/category_" +  str(instance.id) + ".png"
 
-class Category(models.Model):
+class OverwriteStorage(FileSystemStorage):
+    def get_available_name(self, name, max_length=None):
+        if self.exists(name):
+            os.remove(os.path.join(settings.MEDIA_ROOT, name))
+        return name
+
+class Category(OrderedModel):
     name = models.CharField(max_length = 200)
-    rank = models.SmallIntegerField(unique = True, db_index = True)
+    icon = models.ImageField(upload_to = category_file_name, storage = OverwriteStorage())
+
+    class Meta(OrderedModel.Meta):
+        ordering = ('order',)
 
     def __unicode__(self):
         return self.name
 
-    def is_first(self):
-        """
-        Returns ``True`` if item is the first one in the menu.
-        """
-        return Category.objects.filter(rank__lt = self.rank).count() == 0
-
-    def is_last(self):
-        """
-        Returns ``True`` if item is the last one in the menu.
-        """
-        return Category.objects.filter(rank__gt = self.rank).count() == 0
-
-    def increase_rank(self):
-        """
-        Changes position of this item with the next item in the
-        menu. Does nothing if this item is the last one.
-        """
-        try:
-            next_item = Category.objects.filter(rank__gt = self.rank)[0]
-        except IndexError:
-            pass
-        else:
-            self.swap_ranks(next_item)
-
-    def decrease_rank(self):
-        """
-        Changes position of this item with the previous item in the
-        menu. Does nothing if this item is the first one.
-        """
-        try:
-            list = Category.objects.filter(rank__lt = self.rank).reverse()
-            prev_item = list[len(list) - 1]
-        except IndexError:
-            pass
-        else:
-            self.swap_ranks(prev_item)
-
-    def swap_ranks(self, other):
-        """
-        Swap positions with ``other`` menu item.
-        """
-        maxrank = 5000
-        prev_rank, self.rank = self.rank, maxrank
-        self.save()
-        self.rank, other.rank = other.rank, prev_rank
-        other.save()
-        self.save()
+    def save(self, *args, **kwargs):
+        if self.id is None:
+            # This is a django hack. When category icon is saved and then later accessed,
+            # category_id is used as a unique icon identifier. When category is first created,
+            # but not saved yet, category_id is None. So this hack first saves category without icon
+            # and then saves the icon separately. This is done to prevent creation of category_None.png
+            # file, when the icon is saved.
+            saved_icon = self.icon
+            self.icon = None
+            super(Category, self).save(*args, **kwargs)
+            self.icon = saved_icon
+        super(Category, self).save(*args, **kwargs)
 
 class Vendor(models.Model):
     user = models.ForeignKey(User, primary_key = True)
@@ -103,12 +84,6 @@ class Vendor(models.Model):
     def __unicode__(self):
         return self.name
 
-
-class OverwriteStorage(FileSystemStorage):
-    def get_available_name(self, name):
-        if self.exists(name):
-            os.remove(os.path.join(settings.MEDIA_ROOT, name))
-        return name
 
 def content_file_name(instance, filename):
     return packagePath(instance.appid, instance.architecture)

@@ -96,6 +96,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'ordered_model',
     'store',
 )
 
@@ -153,3 +154,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 # trailing slash if there is a path component (optional in other cases).
 # Examples: "http://media.lawrence.com", "http://example.com/media/"
 MEDIA_URL = ''
+
+# Icon size (icons are resized to this size on upload)
+ICON_SIZE_X = 36
+ICON_SIZE_Y = 32
+# If the icon should be transformed to monochrome, with alpha channel, when uploaded or not
+ICON_DECOLOR = True
+

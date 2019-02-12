@@ -2,6 +2,7 @@ pkg-resources==0.0.0
 PyYAML
 django==1.11
 django-common
+django-ordered-model==2.1
 pyOpenSSL
 M2Crypto
 Enum34
@@ -9,4 +10,5 @@ ipaddress
 cffi
 paramiko
 cryptography
+pillow
 python-magic==0.4.15

@@ -69,9 +69,14 @@ class Migration(migrations.Migration):
             name='Category',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('order', models.PositiveIntegerField(db_index=True, editable=False)),
                 ('name', models.CharField(max_length=200)),
-                ('rank', models.SmallIntegerField(db_index=True, unique=True)),
+                ('icon', models.ImageField(storage=store.models.OverwriteStorage(), upload_to=store.models.category_file_name)),
             ],
+            options={
+                'ordering': ('order',),
+                'abstract': False,
+            },
         ),
         migrations.CreateModel(
             name='Vendor',

@@ -28,6 +28,9 @@
 
 /*!
     \page qtauto-deployment-server-index.html
+    \contentspage {Qt Automotive Suite}
+    \nextpage Qt Automotive Suite Deployment Server API Reference
+
     \title Qt Automotive Suite Deployment Server
 
     The Qt Automotive Suite Deployment Server is a new component in the Qt Automotive Suite 5.12.
@@ -91,421 +94,68 @@
         version "0.0.0" is assigned.
     \endlist
 
-    \section1 API
-    \section2 hello
-    Checks whether you are using the correct Platform and the right API to communicate with the deployment server.
-    \table
-        \header
-            \li Parameter
-            \li Description
-        \row
-            \li platform
-            \li The platform the client is running on. This sets the architecture of the packages
-            you get (see \b{settings.APPSTORE_PLATFORM} parameter in \b{appstore/settings.py} file).
-        \row
-            \li version
-            \li The Deployment Server HTTP API version you are using to communicate with the server
-            (see \b{settings.APPSTORE_VERSION}).
-        \row
-            \li require_tag
-            \li Optional parameter for filtering packages by tags. Receives a comma-separated list of tags.
-            Only applications containing any of the specified tags should be listed.
-            Tags must be alphanumeric.
-        \row
-            \li conflicts_tag
-            \li Optional parameter for filtering packages by tags. Receives a comma-separated list of tags.
-            No application containing any of the tags should be listed. Tags must be alphanumeric.
-        \row
-            \li architecture
-            \li Optional parameter for filtering packages by architecture. Receives the CPU architecture.
-            If architecture is not specified, only packages showing \e{All} architecture are listed.
-    \endtable
-    Returns a JSON object:
-    \table
-        \header
-            \li JSON field
-            \li Value
-            \li Description
-        \row
-            \li {1,5} status
-            \li ok
-            \li Successful
-        \row
-            \li maintenance
-            \li Server is in maintenance mode and can not be used at the moment.
-        \row
-            \li incompatible-platform
-            \li You are using an incompatible platform.
-        \row
-            \li incompatible-version
-            \li You are using incompatible version of the API.
-        \row
-            \li malformed-tag
-            \li Tag had wrong format, was not alphanumeric or could not be parsed.
-    \endtable
-    \section2 login
-    Logs onto the deployment server with the given username and password.
-    Either an IMEI or a \l {https://en.wikipedia.org/wiki/MAC_address} {unique hardware identifier} must be provided. This call is needed for downloading apps.
-    \table
-        \header
-            \li Parameter
-            \li Description
-        \row
-            \li username
-            \li The username
-        \row
-            \li password
-            \li Password for the given username
-    \endtable
-    Returns a JSON object:
-    \table
-        \header
-            \li JSON field
-            \li Value
-            \li Description
-        \row
-            \li {1,4} status
-            \li ok
-            \li Login successful.
-        \row
-            \li missing-credentials
-            \li No username or password provided
-        \row
-            \li account-disabled
-            \li Account is disabled in the admin panel
-        \row
-            \li authentication-failed
-            \li Wrong username and/or password or other authentication error
-    \endtable
-    \section2 logout
-    Logs out the currently logged-in user from the deployment server.
-
-    Returns a JSON object:
-    \table
-        \header
-            \li JSON field
-            \li Value
-            \li Description
-        \row
-            \li {1,2} status
-            \li ok
-            \li Successfully logged out
-        \row
-            \li failed
-            \li Was not logged in
-    \endtable
-
-    \section2 app/list
-    Lists all apps. The returned list can be filtered by using the \b{category_id} and the \b{filter} arguments.
-    \table
-        \header
-            \li Parameter
-            \li Description
-        \row
-            \li category_id
-            \li Limits applications to the category with this id.
-        \row
-            \li filter
-            \li Only lists apps whose names match the filter.
-    \endtable
-    Returns an array of JSON objects (\b{not an object itself!}).
-    \table
-        \header
-            \li JSON field
-            \li Description
-        \row
-            \li id
-            \li Unique application id. In reverse domain name notation
-        \row
-            \li name
-            \li Application name
-        \row
-            \li vendor
-            \li Vendor name for application (not vendor id)
-        \row
-            \li category
-            \li Category name for application
-        \row
-            \li tags
-            \li JSON array of application tags
-        \row
-            \li version
-            \li Application version. Returned as a string. If the application information lacks
-            a version number, “0.0.0” is returned
-        \row
-            \li architecture
-            \li Application architecture. Returned as detected in the library components of the application
-
-            If the application is not native, contains \e{All}.
-            Otherwise it is formed like this: mips-little_endian-32-elf
-
-            Where it is a combination of:
-            \list 1
-                \li CPU architecture, as returned by QsysInfo::buildCpuArchitecture()
-                \li CPU endianness (either \b{little_endian} or \b{big_endian})
-                \li ABI bitness
-                \li binary format (\b{elf}, \b{mach_o} or \b{pe32})
-            \endlist
-
-        \row
-            \li briefDescription
-            \li Short textual app description (should be limited to 1 line, around 80-130 characters)
-        \row
-            \li category_id
-            \li Numeric category id matching the application category field.
-    \endtable
-    \section2 app/icon
-     Returns an icon for the given application id.
-     \table
-         \header
-             \li Parameter
-             \li Description
-         \row
-             \li id
-             \li Application id
-     \endtable
-     Returns a PNG image or a 404 error, if the application does not exist.
-     \section2 app/description
-     Returns a description for the given application id.
-     \table
-         \header
-             \li Parameter
-             \li Description
-         \row
-             \li id
-             \li Application id
-     \endtable
-     Returns an application description text - either HTML or plain text.
-     \section2 app/purchase
-     Returns a URL which can be used for downloading the requested application for certain period of time (configurable in the settings).
-     \note This is legacy from AppStore. Changing the name of this API would involve changes in reference UI.
-     The real action is preparing the package for download. For discussion, contact nzamotaev@luxoft.com.
-     \table
-         \header
-             \li Parameter
-             \li Description
-         \row
-             \li device_id
-             \li Unique device id for client hardware (currently unused)
-         \row
-             \li id
-             \li Application id
-     \endtable
-     Returns a JSON object:
-     \table
-         \header
-             \li JSON field
-             \li Value
-             \li Description
-         \row
-             \li {1,2} status
-             \li ok
-             \li Successful
-         \row
-             \li failed
-             \li Something went wrong. Check the error field for more information.
-         \row
-             \li error
-             \li text
-             \li If status equals to \e{failed}, contains an error description.
-         \row
-             \li url
-             \li URL
-             \li URL for downloading the application.
-             Expires in the time specified in the \c{expiresIn} field.
-         \row
-             \li expiresIn
-             \li Integer value
-             \li Time in seconds for which the download URL stays valid.
-     \endtable
-
-     \section2 category/list
-     Lists all the available categories. Also returns \e{All} metacategory, that is used to hold all available applications.
-     Returns an array of JSON objects (\b{not an object itself!}).
-     \table
-         \header
-             \li JSON field
-             \li Description
-         \row
-             \li id
-             \li Unique category id.
-         \row
-             \li name
-             \li Category name.
-     \endtable
-     \section2 category/icon
-     Returns an icon for the given category id.
-     \table
-         \header
-         \li Parameter
-         \li Description
-         \row
-         \li id
-         \li Id of the category.
-     \endtable
-     Returns a PNG image or an empty 1x1 PNG file.
-     \note Currently takes the icon of the first application in the category if it exists.
-     This should be fixed.
-     \section2 upload
-     Accepts remote package upload requests.
-     The user must be in the \e{staff} group to use this API. Also requires either basic authentication
-     or a previous call to the \c{login} method. This is a POST request to the server due to the parameters used.
-     \table
-         \header
-             \li Parameter
-             \li Description
-         \row
-             \li description
-             \li Package description, long version. Can be text or HTML.
-         \row
-             \li short-description
-             \li One line package description.
-         \row
-             \li category
-             \li Category name for the category where the package will be put.
-         \row
-             \li vendor
-             \li Vendor name for the package.
-         \row
-             \li package
-             \li Package itself. This is uploaded as a file parameter.
-     \endtable
-     Returns JSON object:
-     \table
-         \header
-             \li Parameter
-             \li Value
-             \li Description
-         \row
-             \li {1,9} status
-             \li ok
-             \li Success
-         \row
-             \li no description
-             \li Description parameter missing
-         \row
-             \li no short description
-             \li Short-description parameter missing
-         \row
-             \li no category
-             \li Category parameter missing
-         \row
-             \li no vendor
-             \li Vendor parameter missing
-         \row
-             \li Package validation failed
-             \li Package did not pass format or sanity validation
-         \row
-             \li Non-existing category
-             \li No category matches the passed parameter
-         \row
-             \li Non-existing vendor
-             \li No vendor matches passed parameter
-         \row
-             \li no package to upload
-             \li There was no \c{package} parameter in the request, or it was not a POST request
-     \endtable
-
-    \section2 API use examples
-    The deployment server exposes a HTTP API to the world. Arguments to the functions need to be provided using the
-    HTTP GET/POST syntax. Returned data will be in JSON, PNG or text format, depending on the function.
-    \section3 Workflow
-    \list 1
-    \li Send a \b{hello} request to the server to get the current status and to check
-        whether your platform is compatible with this server instance:
-
-        \tt http://<server>/hello?platform=AM&version=1
-
-        Returns:
-
-        \tt { { "status": "ok" } }
-
-    \li Login as user \e{user} with password \e{pass}:
-
-        \tt http://<server>/login?username=user&password=pass
-
-        Returns:
-
-        \tt { { "status": "ok" } }
-
-    \li List all applications
-
-        \tt http://<server>/app/list
-
-        Returns:
-
-        \tt { [{ "category": "Entertainment",
-                 "name": "Nice App",
-                 "vendor": "Luxoft",
-                 "briefDescription": "Nice App is a really nice app.",
-                 "category_id": 4,
-                 "id": "com.luxoft.niceapp"},
-                 ....
-              ] }
-
-
-    \li Request a download for an app:
-
-    \tt http://<server>/app/purchase?device_id=12345&id=com.luxoft.niceapp
-
-    Returns:
-
-    \tt { { "status": "ok",
-            "url": "http://<server>/app/download/com.luxoft.niceapp.2.npkg",
-            "expiresIn": 600
-           } }
-
-    \li Use the \b{url} provided in step 4 to download the application within
-                     \b{expiresIn} seconds.
-
-    \endlist
-
     \section1 Installation
-    \section2 Setting up the Server in virtualenv
-    Before installing dependencies in the Python virtual environment, libffi-dev package must be
-    installed. After package installation, prepare the virtual environment:
+
+    \section2 Set up the Server in a Virtual Environment
+
+    Before you install the dependencies in the Python virtual environment, you must install the
+    \c{libffi-dev} package. Next, prepare the virtual environment:
+
     \code
         virtualenv ./venv
         ./venv/bin/pip install -r requirements.txt
     \endcode
 
-    Before running the server, make sure to adapt the \b{APPSTORE_*} settings in \b{appstore/settings.py} to your environment.
+    Make sure to adapt the \c{APPSTORE_*} settings in \c{appstore/settings.py} to your environment,
+    before you run the server.
 
-    Since package downloads are done via temporary files, one needs to setup a cron-job to cleanup
-    these temporary files every now and then. The job should be triggered every \b{settings.APPSTORE_DOWNLOAD_EXPIRY/2}
-    minutes and it just needs to execute:
+    Since package downloads are done via temporary files, you need to setup a cron-job to remove
+    these temporary files periodically. The cron-job should be triggered every
+    \c{settings.APPSTORE_DOWNLOAD_EXPIRY/2} minutes; it needs to run:
+
     \code
       ./manage.py expire-downloads
     \endcode
-    \section2 Starting the server
-    Running the server:
+
+    \section2 Start the Server
+
+    To start the server, run the following command in your terminal:
+
     \code
       ./manage.py runserver 0.0.0.0:8080
     \endcode
-    will start the server on port 8080, reachable by anyone. One can tweak the listening address to whatever fits the needs.
-    \section2 Maintenance tasks
+
+    This command starts the server on port 8080, and is reachable by anyone. You can modify the
+    listening address to another address that suits your use case.
+
+    \section2 Maintain the Server
+
     \list
-    \li Cleaning up the downloads directory:
+    \li Clean up the downloads directory:
     \code
       ./manage.py expire-downloads
     \endcode
-    will remove all files from the downloads directory, that are older than
-    \b{settings.APPSTORE_DOWNLOAD_EXPIRY} minutes. This should be called from a cron-job (see above).
-    \li Manually verifying a package for upload:
+
+    This command removes all files from the downloads directory, that are older than
+    \c{settings.APPSTORE_DOWNLOAD_EXPIRY} minutes. Ideally, this command should be run via a cron-job.
+
+    \li Manually verify a package for upload:
+
     \code
       ./manage.py verify-upload-package <pkg.appkg>
     \endcode
-    will tell if \b{<pkg.appkg>} is a valid package that can be uploaded to the store.
-    \li Manually adding a store signature to a package:
+
+    This command verifies if \c{<pkg.appkg>} is a valid package that can be uploaded to the Downloads
+    app.
+
+    \li Manually add a store signature to a package:
+
     \code
       ./manage.py store-sign-package <in.appkg> <out.appkg> [device id]
     \endcode
-    will first verify \b{<in.appkg>}. If this succeeds, it will copy \b{<in.appkg>} to \b{<out.appkg>} and
-    add a store signature. The optional \b{[device id]} parameter will lock the generated package to the device with this id.
+
+    This command first verifies the \c{<in.appkg>}. If this verification succeeds, \c{<in.appkg>}
+    is copied over to \c{<out.appkg>} and a store signature is added. The optional \c{[device id]}
+    parameter locks the generated package to the device with this ID.
     \endlist
-
-    \section1 Architecture
-    This is a django application.
-
-    \b{TBD}
 */

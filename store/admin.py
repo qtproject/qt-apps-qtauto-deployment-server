@@ -1,6 +1,7 @@
 #############################################################################
 ##
-## Copyright (C) 2016 Pelagicore AG
+## Copyright (C) 2019 Luxoft Sweden AB
+## Copyright (C) 2018 Pelagicore AG
 ## Contact: https://www.qt.io/licensing/
 ##
 ## This file is part of the Neptune Deployment Server
@@ -174,7 +175,7 @@ class AppAdminForm(forms.ModelForm):
 
 class AppAdmin(admin.ModelAdmin):
     form = AppAdminForm
-    list_display = ('name', 'appid', 'architecture', 'version')
+    list_display = ('name', 'appid', 'architecture', 'version', 'tags')
 
     def save_model(self, request, obj, form, change):
         obj.save()

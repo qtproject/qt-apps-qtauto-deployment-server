@@ -1,6 +1,7 @@
 #############################################################################
 ##
-## Copyright (C) 2016 Pelagicore AG
+## Copyright (C) 2019 Luxoft Sweden AB
+## Copyright (C) 2018 Pelagicore AG
 ## Contact: https://www.qt.io/licensing/
 ##
 ## This file is part of the Neptune Deployment Server
@@ -128,10 +129,10 @@ class App(models.Model):
 
     class Meta:
         """Makes the group of id and arch - a unique identifier"""
-        unique_together = (('appid', 'architecture', ),)
+        unique_together = (('appid', 'architecture', 'tags'),)
 
     def __unicode__(self):
-        return self.name + " [" + " ".join([self.appid,self.version,self.architecture]) + "]"
+        return self.name + " [" + " ".join([self.appid,self.version,self.architecture,self.tags]) + "]"
 
     def save(self, *args, **kwargs):
         try:

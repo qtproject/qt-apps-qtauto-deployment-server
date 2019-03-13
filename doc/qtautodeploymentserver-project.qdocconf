@@ -1,0 +1,26 @@
+project                       = QtAutoDeploymentServer
+description                   = Qt Automotive Suite Deployment Server Documentation
+version                       = $QT_VERSION
+url                           = https://doc.qt.io/QtAutoDeploymentServer
+
+sourcedirs                   += src
+imagedirs                    += src/images
+
+qhp.projects                  = QtAutoDeploymentServer
+
+qhp.QtAutoDeploymentServer.file                = qtautodeploymentserver.qhp
+qhp.QtAutoDeploymentServer.namespace           = org.qt-project.qtautodeploymentserver.$QT_VERSION_TAG
+qhp.QtAutoDeploymentServer.virtualFolder       = qtautodeploymentserver
+qhp.QtAutoDeploymentServer.indexTitle          = Qt Automotive Suite Deployment Server
+qhp.QtAutoDeploymentServer.indexRoot           =
+
+qhp.QtAutoDeploymentServer.filterAttributes    = qtautodeploymentserver $QT_VERSION qtrefdoc
+qhp.QtAutoDeploymentServer.customFilters.Qt.name = QtAutoDeploymentServer $QT_VERSION
+qhp.QtAutoDeploymentServer.customFilters.Qt.filterAttributes = qtautodeploymentserver $QT_VERSION
+
+tagfile                       = qtautodeploymentserver.tags
+
+depends                       = qtautomotivesuite
+
+buildversion = "Qt Automotive Suite Deployment Server $QT_VERSION"
+navigation.homepage = "Qt Automotive Suite"

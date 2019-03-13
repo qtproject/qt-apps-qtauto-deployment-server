@@ -1,5 +1,5 @@
 This is a PoC deployment server, which can be used together with
-the Neptune IVI UI and the Pelagicore Application Manager.
+the Neptune IVI UI and the Luxoft Application Manager.
 
 **This is a development server only - do NOT use in production.**
 

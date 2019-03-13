@@ -1,0 +1,161 @@
+/****************************************************************************
+**
+** Copyright (C) 2019 Luxoft Sweden AB
+** Copyright (C) 2018 Pelagicore AG
+** Contact: https://www.qt.io/licensing/
+**
+** This file is part of the documentation of the Qt Auto Deployment Server.
+**
+** $QT_BEGIN_LICENSE:FDL-QTAS$
+** Commercial License Usage
+** Licensees holding valid commercial Qt Automotive Suite licenses may use
+** this file in accordance with the commercial license agreement provided
+** with the Software or, alternatively, in accordance with the terms
+** contained in a written agreement between you and The Qt Company.  For
+** licensing terms and conditions see https://www.qt.io/terms-conditions.
+** For further information use the contact form at https://www.qt.io/contact-us.
+**
+** GNU Free Documentation License Usage
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of
+** this file. Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: https://www.gnu.org/licenses/fdl-1.3.html.
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+    \page qtauto-deployment-server-index.html
+    \contentspage {Qt Automotive Suite}
+    \nextpage Qt Automotive Suite Deployment Server API Reference
+
+    \title Qt Automotive Suite Deployment Server
+
+    The Qt Automotive Suite Deployment Server is a new component in the Qt Automotive Suite 5.12.
+    Previously, it was known as the Neptune Appstore and used for demonstrations purposes.
+
+    This component is a lightweight HTTP server that provides network feeds to application packages
+    that are available for installation by a Qt Application Manager instance, running on a target
+    device connected to a network. The UI counterpart for the Deployment Server is the Downloads app
+    in the Neptune 3 UI. Together, the Deployment Server and the Downloads app enable you to install
+    different apps that are available in the server via network.
+
+    The key scenario for these components is to install apps during the integration testing
+    process. Additionally, the code can also be used as a reference implementation for a
+    fully-featured server, and a new Downloads app on the target device for production.
+
+    The Deployment Server works with the Application Installer in the Qt Application Manager and
+    acts as an installation source for \c{http://} and \c{https://} schemes. In addition to
+    application packages, the Deployment Server also hosts meta information about each package,
+    that is used by the Downloads app to visualize the choices available for the user to select.
+    This meta information is stored in the form of tags and other information in the package
+    header, according to the Qt Application Manager’s package format. When a package is uploaded
+    to the server, the package header is parsed, associated with that package, and then sent to a
+    Downloads app, that queries for a list of available apps. Using this information, a Downloads
+    app can inform users about apps that are available and even hide those that are not compatible
+    with the target installation. The figure below illustrates this installation scenario.
+
+    \image deployment-server-installation-handshake.png "Install an App via the Deployment Server"
+
+    The Deployment Server is implemented in Python, using Django, based on the following assumptions.
+
+    \section1 Assumptions
+
+    \list
+        \li Applications are identified with a group of: Application ID, version, architecture, and tags;
+        these groups are unique.
+        \li Architecture is specified as a group of: CPU architecture, endianness, bitness, and OS.
+        If a package does not contain architecture specific parts, the architecture is specified as \e{All}.
+        \li CPU architecture is based on the return value from QsysInfo::buildCpuArchitecture().
+        \li The installation target is automatically determined by parsing binary files. For example,
+        detecting an ELF binary means that it's a Linux package; the CPU architecture, such as armv8,
+        further defines the installation target.
+        See \l {https://doc.qt.io/qt-5/qsysinfo.html#kernelType} {QSysInfo::kernelType()} for more details.
+        \li If both native and non-native applications match the selection criteria, then the native application
+        is preferred.
+        \li Applications can be further filtered by tags, both as positive (inlucde) and negative (exclude)
+        filters.
+        \li Tags are considered alphanumeric and can contain lowercase Latin letters, numbers, and
+        the underscore symbol. All tags passed to the server are converted to lowercase.
+        \li Tags can also have an optional version. The version number is separated from tag using a colon (:).
+        Similar to tags, the version can contain lowercase Latin letters, numbers, and the underscore symbol.
+        \li Tags are matched according to versions. For example, if you request for "version 5.12", this matches
+        with "5.12.0", but not vice versa. If you request for a non-versioned tag, any version matches your request.
+        \li Tag lists in requests and packages are simplified. For example, "qt:5.12,qt:5.12.0" is reduced to "qt:5.12".
+        \li Although the \l {https://doc.qt.io/QtApplicationManager/manifest.html#basic-manifest} {Application manifest}
+        allows for any number of categories to be assigned to an application, currently, the Deployment Server
+        requires manual assignment of only one category to the application. Categories in the application manifest
+        are ignored.
+        \li Tag information is parsed from the package header's \b{extra} and \b{extraSigned} parts,
+        from \b{tags} array. All elements of that array are added to package’s tag list.
+        \li Each package has a version number. If the manifest does not contain a version field, a default
+        version "0.0.0" is assigned.
+    \endlist
+
+    \section1 Installation
+
+    \section2 Set up the Server in a Virtual Environment
+
+    Before you install the dependencies in the Python virtual environment, you must install the
+    \c{libffi-dev} package. Next, prepare the virtual environment:
+
+    \code
+        virtualenv ./venv
+        ./venv/bin/pip install -r requirements.txt
+    \endcode
+
+    Make sure to adapt the \c{APPSTORE_*} settings in \c{appstore/settings.py} to your environment,
+    before you run the server.
+
+    Since package downloads are done via temporary files, you need to setup a cron-job to remove
+    these temporary files periodically. The cron-job should be triggered every
+    \c{settings.APPSTORE_DOWNLOAD_EXPIRY/2} minutes; it needs to run:
+
+    \code
+      ./manage.py expire-downloads
+    \endcode
+
+    \section2 Start the Server
+
+    To start the server, run the following command in your terminal:
+
+    \code
+      ./manage.py runserver 0.0.0.0:8080
+    \endcode
+
+    This command starts the server on port 8080, and is reachable by anyone. You can modify the
+    listening address to another address that suits your use case.
+
+    \section2 Maintain the Server
+
+    \list
+    \li Clean up the downloads directory:
+    \code
+      ./manage.py expire-downloads
+    \endcode
+
+    This command removes all files from the downloads directory, that are older than
+    \c{settings.APPSTORE_DOWNLOAD_EXPIRY} minutes. Ideally, this command should be run via a cron-job.
+
+    \li Manually verify a package for upload:
+
+    \code
+      ./manage.py verify-upload-package <pkg.appkg>
+    \endcode
+
+    This command verifies if \c{<pkg.appkg>} is a valid package that can be uploaded to the Downloads
+    app.
+
+    \li Manually add a store signature to a package:
+
+    \code
+      ./manage.py store-sign-package <in.appkg> <out.appkg> [device id]
+    \endcode
+
+    This command first verifies the \c{<in.appkg>}. If this verification succeeds, \c{<in.appkg>}
+    is copied over to \c{<out.appkg>} and a store signature is added. The optional \c{[device id]}
+    parameter locks the generated package to the device with this ID.
+    \endlist
+*/

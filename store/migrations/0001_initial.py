@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 #############################################################################
 ##
-## Copyright (C) 2016 Pelagicore AG
+## Copyright (C) 2019 Luxoft Sweden AB
+## Copyright (C) 2018 Pelagicore AG
 ## Contact: https://www.qt.io/licensing/
 ##
 ## This file is part of the Neptune Deployment Server
@@ -99,6 +100,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='app',
-            unique_together=set([('appid', 'architecture')]),
+            unique_together=set([('appid', 'architecture', 'tags')]),
         ),
     ]

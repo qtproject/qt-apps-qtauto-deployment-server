@@ -1,6 +1,7 @@
 #############################################################################
 ##
-## Copyright (C) 2016 Pelagicore AG
+## Copyright (C) 2019 Luxoft Sweden AB
+## Copyright (C) 2018 Pelagicore AG
 ## Contact: https://www.qt.io/licensing/
 ##
 ## This file is part of the Neptune Deployment Server
@@ -44,24 +45,17 @@ from M2Crypto import SMIME, BIO, X509
 from OpenSSL.crypto import load_pkcs12, FILETYPE_PEM, dump_privatekey, dump_certificate
 
 from django.conf import settings
+from tags import SoftwareTagList, SoftwareTag
 import osandarch
 
-def validateTag(tag):
-    for i in tag:
-        if not i.isalnum():
-            if i != "_":
-                return False
-    return True
-
 def makeTagList(pkgdata):
-    taglist = set()
+    taglist = SoftwareTagList()
     for fields in ('extra', 'extraSigned'):
         if fields in pkgdata['header']:
             if 'tags' in pkgdata['header'][fields]:
-                tags = set(pkgdata['header'][fields]['tags'])  # Fill tags list then add them
-                taglist = taglist.union(tags)
-    tags = ','.join(taglist)
-    return tags
+                for i in list(pkgdata['header'][fields]['tags']):  # Fill tags list then add them
+                    taglist.append(SoftwareTag(i))
+    return str(taglist)
 
 def packagePath(appId = None, architecture = None):
     path = settings.MEDIA_ROOT + 'packages/'

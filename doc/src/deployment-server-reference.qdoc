@@ -1,0 +1,447 @@
+/****************************************************************************
+**
+** Copyright (C) 2019 Luxoft Sweden AB
+** Copyright (C) 2018 Pelagicore AG
+** Contact: https://www.qt.io/licensing/
+**
+** This file is part of the documentation of the Qt Auto Deployment Server.
+**
+** $QT_BEGIN_LICENSE:FDL-QTAS$
+** Commercial License Usage
+** Licensees holding valid commercial Qt Automotive Suite licenses may use
+** this file in accordance with the commercial license agreement provided
+** with the Software or, alternatively, in accordance with the terms
+** contained in a written agreement between you and The Qt Company.  For
+** licensing terms and conditions see https://www.qt.io/terms-conditions.
+** For further information use the contact form at https://www.qt.io/contact-us.
+**
+** GNU Free Documentation License Usage
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of
+** this file. Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: https://www.gnu.org/licenses/fdl-1.3.html.
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+    \page qtauto-deployment-server-reference.html
+    \previouspage Qt Automotive Suite Deployment Server
+    \contentspage Qt Automotive Suite
+
+    \title Qt Automotive Suite Deployment Server API Reference
+
+    \section1 API Reference
+
+    The following tables describe the requests, their parameters, as well as the corresponding responses.
+
+    \section2 hello
+
+    Checks whether you are using the correct Platform and the right API to communicate with the deployment
+    server.
+    \table
+        \header
+            \li Parameter
+            \li Description
+        \row
+            \li platform
+            \li The platform on which the client is running. This parameter sets the architecture
+                of the packages you get. For more information, refer to the
+                \c{settings.APPSTORE_PLATFORM} parameter in the \c{appstore/settings.py} file.
+        \row
+            \li version
+            \li The Deployment Server's HTTP API version that you are using to communicate with the
+                server. For more information, see \c{settings.APPSTORE_VERSION}.
+        \row
+            \li require_tag
+            \li An optional parameter used to filter packages by tags. Receives a comma-separated
+                list of tags; these tags must be alphanumeric. Only applications that contain any
+                of the specified tags should be listed.
+        \row
+            \li conflicts_tag
+            \li An optional parameter used to filter packages by tags. Receives a comma-separated
+                list of tags; these tags must be alphanumeric. Applications that contain any of the
+                speicifed tags should be excluded.
+        \row
+            \li architecture
+            \li An optional parameter used to filter packages by architecture. Receives the CPU
+                architecture. If the architecture is not speciifed, only packages showing \e{All}
+                architecture are listed.
+    \endtable
+
+    Returns a JSON object with the following fields and values.
+    \table
+        \header
+            \li JSON Field
+            \li Value
+            \li Description
+        \row
+            \li {1,5} status
+            \li ok
+            \li Successful
+        \row
+            \li maintenance
+            \li The server is in maintenance mode and cannot be used at the moment.
+        \row
+            \li incompatible-platform
+            \li The platform you are using is not compatible.
+        \row
+            \li incompatible-version
+            \li The API version you are using is not compatible.
+        \row
+            \li malformed-tag
+            \li The tag format is incorrect, may not be alphanumeric, or could
+                not be parsed.
+    \endtable
+
+    \section2 login
+
+    Logs onto the deployment server with the given username and password.
+    Either an IMEI or a unique hardware identifier, such as a MAC address,
+    must be provided. This call is necessary to be able to download apps.
+    \table
+        \header
+            \li Parameter
+            \li Description
+        \row
+            \li username
+            \li The username.
+        \row
+            \li password
+            \li The password for the specified username.
+    \endtable
+
+    Returns a JSON object with the following fields and values.
+    \table
+        \header
+            \li JSON Field
+            \li Value
+            \li Description
+        \row
+            \li {1,4} status
+            \li ok
+            \li Login successful.
+        \row
+            \li missing-credentials
+            \li No username or password was provided.
+        \row
+            \li account-disabled
+            \li The account has been disabled in the Admin panel.
+        \row
+            \li authentication-failed
+            \li The user name and/or password may be wrong; or another authentication error
+                occurred.
+    \endtable
+
+    \section2 logout
+    Logs out the currently logged-in user from the deployment server.
+
+    Returns a JSON object with the following fields and values.
+    \table
+        \header
+            \li JSON Field
+            \li Value
+            \li Description
+        \row
+            \li {1,2} status
+            \li ok
+            \li The user has logged out successfully.
+        \row
+            \li failed
+            \li The user was not logged in.
+    \endtable
+
+    \section2 app/list
+    Lists all apps. The returned list can be filtered by using the \c{category_id} and the
+     \c{filter} parameters.
+    \table
+        \header
+            \li Parameter
+            \li Description
+        \row
+            \li category_id
+            \li Limits the app to those with this category ID only.
+        \row
+            \li filter
+            \li Lists apps with names that match this filter only.
+    \endtable
+
+    Returns an array of JSON objects (\b{not an object itself!}).
+    \table
+        \header
+            \li JSON Field
+            \li Description
+        \row
+            \li id
+            \li A unique app ID, in reverse domain name notation.
+        \row
+            \li name
+            \li The app's name.
+        \row
+            \li vendor
+            \li The vendor name for the app; not the vendor ID.
+        \row
+            \li category
+            \li A category name for the app.
+        \row
+            \li tags
+            \li JSON array of app tags
+        \row
+            \li version
+            \li The app's version, returned as a string. If the there is no version number, the
+                default version, "0.0.0" is returned.
+        \row
+            \li architecture
+            \li The app's architecture, returned as detected in the app's library components.
+
+            If the application is not native, contains \e{All}.
+            Otherwise it is formed like this: mips-little_endian-32-elf
+
+            Where it is a combination of:
+            \list 1
+                \li CPU architecture, as returned by \l{https://doc.qt.io/qt-5/qsysinfo.html#buildCpuArchitecture}{QsysInfo::buildCpuArchitecture()}
+                \li CPU endianness, either \c{little_endian} or \c{big_endian})
+                \li ABI bitness
+                \li Binary format, either \c{elf}, \c{mach_o} or \c{pe32}
+            \endlist
+        \row
+            \li briefDescription
+            \li A short text that describes the app, limited to 1 line, approximately 80-130
+                characters.
+        \row
+            \li category_id
+            \li Numeric category ID that matches the app's category.
+    \endtable
+
+    \section2 app/icon
+     Returns an icon for the given application id.
+     \table
+         \header
+             \li Parameter
+             \li Description
+         \row
+             \li id
+             \li The app ID.
+     \endtable
+
+     Returns a PNG image if the app exists; an HTTP 404 error otherwise.
+
+     \section2 app/description
+
+     Returns a description for the given app ID.
+
+     \table
+         \header
+             \li Parameter
+             \li Description
+         \row
+             \li id
+             \li app ID
+     \endtable
+
+     Returns a description text for the app, either HTML or plain text.
+
+     \section2 app/purchase
+
+     Returns a URL that you can use to download the requested app for a certain period of time
+     only; configurable in the settings.
+
+     \note This request is a legacy from the AppStore. Changing the name of this API would
+     involve changes in Neptune 3 UI.
+
+     \table
+         \header
+             \li Parameter
+             \li Description
+         \row
+             \li device_id
+             \li A unique device ID for the client hardware; currently not used.
+         \row
+             \li id
+             \li The app ID.
+     \endtable
+     Returns a JSON object:
+     \table
+         \header
+             \li JSON Field
+             \li Value
+             \li Description
+         \row
+             \li {1,2} status
+             \li ok
+             \li Successful
+         \row
+             \li failed
+             \li
+             \li An error has occurred, dheck the error field for more information.
+         \row
+             \li error
+             \li Text.
+             \li If the status is equal to \c{failed}, contains an error description.
+         \row
+             \li url
+             \li A URL.
+             \li The URL from where to download the app. Expires according to the value specified
+                 in \c{expiresIn}.
+         \row
+             \li expiresIn
+             \li An integer value.
+             \li Time in seconds during which the download URL is valid.
+     \endtable
+
+     \section2 category/list
+
+     Lists all of the available categories. Also returns the \e{All} metacategory, that is used
+     to hold all available applications.
+
+     Returns an array of JSON objects (\b{not an object itself!}).
+
+     \table
+         \header
+             \li JSON field
+             \li Description
+         \row
+             \li id
+             \li Unique category id.
+         \row
+             \li name
+             \li Category name.
+     \endtable
+
+     \section2 category/icon
+     Returns an icon for the given category ID.
+
+     \table
+         \header
+         \li Parameter
+         \li Description
+         \row
+         \li id
+         \li The category ID.
+     \endtable
+
+     Returns an image in PNG format or an empty 1x1 PNG file.
+
+     \note Currently takes the icon of the first app in the category, if it exists.
+
+     \section2 upload
+     Accepts remote package upload requests.
+     The user must be in the \e{staff} group to use this API. Also requires either basic authentication
+     or a previous call to the \c{login} method. This is a POST request to the server due to the parameters used.
+     \table
+         \header
+             \li Parameter
+             \li Description
+         \row
+             \li description
+             \li Package description, long version. Can be text or HTML.
+         \row
+             \li short-description
+             \li One line package description.
+         \row
+             \li category
+             \li Category name for the category where the package will be put.
+         \row
+             \li vendor
+             \li Vendor name for the package.
+         \row
+             \li package
+             \li Package itself. This is uploaded as a file parameter.
+     \endtable
+
+     Returns JSON object:
+     \table
+         \header
+             \li Parameter
+             \li Value
+             \li Description
+         \row
+             \li {1,9} status
+             \li ok
+             \li Success
+         \row
+             \li no description
+             \li The description parameter is missing.
+         \row
+             \li no short description
+             \li The short-description parameter is missing.
+         \row
+             \li no category
+             \li The category parameter is missing.
+         \row
+             \li no vendor
+             \li The vendor parameter is missing.
+         \row
+             \li Package validation failed
+             \li Package did not pass format or sanity validation
+         \row
+             \li Non-existing category
+             \li The specified category does not match the parameter passed.
+         \row
+             \li Non-existing vendor
+             \li The specified vendor does not match the parameter passed.
+         \row
+             \li no package to upload
+             \li There was no \c{package} parameter in the request, or it was not a POST request.
+     \endtable
+
+    \section2 API Usage Examples
+
+    The Deployment Server exposes an HTTP API. Arguments to these requests need to be provided
+    using the HTTP GET or POST syntax. The data is returned in JSON, PNG, or text format, depending
+    on the request.
+
+    \section3 Workflow
+
+    \list 1
+    \li Send a \c{hello} request to the server to get the current status and to check
+        whether your platform is compatible with this server instance:
+
+        \tt http://<server>/hello?platform=AM&version=1
+
+        Returns:
+
+        \tt { { "status": "ok" } }
+
+    \li Login as \c{user} with password, \c{pass}:
+
+        \tt http://<server>/login?username=user&password=pass
+
+        Returns:
+
+        \tt { { "status": "ok" } }
+
+    \li List all applications
+
+        \tt http://<server>/app/list
+
+        Returns:
+
+        \tt { [{ "category": "Entertainment",
+                 "name": "Nice App",
+                 "vendor": "Luxoft",
+                 "briefDescription": "Nice App is a really nice app.",
+                 "category_id": 4,
+                 "id": "com.luxoft.niceapp"},
+                 ....
+              ] }
+
+
+    \li Request a download for an app:
+
+    \tt http://<server>/app/purchase?device_id=12345&id=com.luxoft.niceapp
+
+    Returns:
+
+    \tt { { "status": "ok",
+            "url": "http://<server>/app/download/com.luxoft.niceapp.2.npkg",
+            "expiresIn": 600
+           } }
+
+    \li Use the \c{url} provided in step 4 to download the application within \c{expiresIn}
+        seconds.
+
+    \endlist
+*/

@@ -37,13 +37,13 @@ from django.conf import settings
 from django.db.models import Q, Count
 from django.http import HttpResponse, HttpResponseForbidden, Http404, JsonResponse
 from django.contrib import auth
-from django.template import Context, loader
 from django.views.decorators.csrf import csrf_exempt
 from authdecorators import logged_in_or_basicauth, is_staff_member
 
 from models import App, Category, Vendor, savePackageFile
 from utilities import parsePackageMetadata, parseAndValidatePackageMetadata, addSignatureToPackage
 from utilities import packagePath, iconPath, downloadPath
+from utilities import getRequestDictionary
 from osandarch import normalizeArch
 from tags import SoftwareTagList
 
@@ -53,20 +53,20 @@ def hello(request):
 
     if settings.APPSTORE_MAINTENANCE:
         status = 'maintenance'
-    elif request.REQUEST.get("platform", "") != str(settings.APPSTORE_PLATFORM_ID):
+    elif getRequestDictionary(request).get("platform", "") != str(settings.APPSTORE_PLATFORM_ID):
         status = 'incompatible-platform'
-    elif request.REQUEST.get("version", "") != str(settings.APPSTORE_PLATFORM_VERSION):
+    elif getRequestDictionary(request).get("version", "") != str(settings.APPSTORE_PLATFORM_VERSION):
         status = 'incompatible-version'
 
     for j in ("require_tag", "conflicts_tag",):
-        if j in request.REQUEST: #Tags are coma-separated,
+        if j in getRequestDictionary(request): #Tags are coma-separated,
             versionmap = SoftwareTagList()
-            if not versionmap.parse(request.REQUEST[j]):
+            if not versionmap.parse(getRequestDictionary(request)[j]):
                 status = 'malformed-tag'
                 break
             request.session[j] = str(versionmap)
-    if 'architecture' in request.REQUEST:
-        request.session['architecture'] = normalizeArch(request.REQUEST['architecture'])
+    if 'architecture' in getRequestDictionary(request):
+        request.session['architecture'] = normalizeArch(getRequestDictionary(request)['architecture'])
     else:
         request.session['architecture'] = ''
     return JsonResponse({'status': status})
@@ -74,11 +74,10 @@ def hello(request):
 
 def login(request):
     status = 'ok'
-
     try:
         try:
-            username = request.REQUEST["username"]
-            password = request.REQUEST["password"]
+            username = getRequestDictionary(request)["username"]
+            password = getRequestDictionary(request)["password"]
         except KeyError:
             raise Exception('missing-credentials')
 
@@ -114,19 +113,19 @@ def upload(request):
     status = 'ok'
     try:
         try:
-            description = request.REQUEST["description"]
+            description = getRequestDictionary(request)["description"]
         except:
             raise Exception('no description')
         try:
-            shortdescription = request.REQUEST["short-description"]
+            shortdescription = getRequestDictionary(request)["short-description"]
         except:
             raise Exception('no short description')
         try:
-            category_name = request.REQUEST["category"]
+            category_name = getRequestDictionary(request)["category"]
         except:
             raise Exception('no category')
         try:
-            vendor_name = request.REQUEST["vendor"]
+            vendor_name = getRequestDictionary(request)["vendor"]
         except:
             raise Exception('no vendor')
 
@@ -159,10 +158,10 @@ def upload(request):
 
 def appList(request):
     apps = App.objects.all()
-    if 'filter' in request.REQUEST:
-        apps = apps.filter(name__contains = request.REQUEST['filter'])
-    if 'category_id' in request.REQUEST:
-        catId = request.REQUEST['category_id']
+    if 'filter' in getRequestDictionary(request):
+        apps = apps.filter(name__contains = getRequestDictionary(request)['filter'])
+    if 'category_id' in getRequestDictionary(request):
+        catId = getRequestDictionary(request)['category_id']
         if catId != -1: # All metacategory
             apps = apps.filter(category__exact = catId)
 
@@ -223,27 +222,29 @@ def appDescription(request):
     archlist = ['All', ]
     if 'architecture' in request.session:
         archlist.append(request.session['architecture'])
+    appId = getRequestDictionary(request)['id']
     try:
-        app = App.objects.get(appid__exact = request.REQUEST['id'], architecture__in = archlist).order_by('architecture')
+        app = App.objects.get(appid__exact = appId, architecture__in = archlist).order_by('architecture')
         app = app.last()
         return HttpResponse(app.description)
     except:
-        raise Http404('no such application: %s' % request.REQUEST['id'])
+        raise Http404('no such application: %s' % appId)
 
 
 def appIcon(request):
     archlist = ['All', ]
     if 'architecture' in request.session:
         archlist.append(request.session['architecture'])
+    appId = getRequestDictionary(request)['id']
     try:
-        app = App.objects.filter(appid__exact = request.REQUEST['id'], architecture__in = archlist).order_by('architecture')
+        app = App.objects.filter(appid__exact = appId, architecture__in = archlist).order_by('architecture')
         app = app.last()
         with open(iconPath(app.appid,app.architecture), 'rb') as iconPng:
             response = HttpResponse(content_type = 'image/png')
             response.write(iconPng.read())
             return response
     except:
-        raise Http404('no such application: %s' % request.REQUEST['id'])
+        raise Http404('no such application: %s' % appId)
 
 
 def appPurchase(request):
@@ -253,14 +254,14 @@ def appPurchase(request):
     if 'architecture' in request.session:
         archlist.append(request.session['architecture'])
     try:
-        deviceId = str(request.REQUEST.get("device_id", ""))
+        deviceId = str(getRequestDictionary(request).get("device_id", ""))
         if settings.APPSTORE_BIND_TO_DEVICE_ID:
             if not deviceId:
                 return JsonResponse({'status': 'failed', 'error': 'device_id required'})
         else:
             deviceId = ''
 
-        app = App.objects.filter(appid__exact = request.REQUEST['id'], architecture__in=archlist).order_by('architecture')
+        app = App.objects.filter(appid__exact = getRequestDictionary(request)['id'], architecture__in=archlist).order_by('architecture')
         app = app.last()
         fromFilePath = packagePath(app.appid, app.architecture)
 
@@ -314,10 +315,11 @@ def categoryList(request):
 
 def categoryIcon(request):
     response = HttpResponse(content_type = 'image/png')
+    categoryId = getRequestDictionary(request)['id']
 
     # there are no category icons (yet), so we just return the icon of the first app in this category
     try:
-        app = App.objects.filter(category__exact = request.REQUEST['id']).order_by('-dateModified')[0] #FIXME - the category icon is unimplemented
+        app = App.objects.filter(category__exact = categoryId).order_by('-dateModified')[0] #FIXME - the category icon is unimplemented
         with open(iconPath(app.appid,app.architecture), 'rb') as iconPng:
             response.write(iconPng.read())
     except:

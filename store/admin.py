@@ -34,7 +34,7 @@ import os
 
 from django import forms
 from django.conf import settings
-from django.conf.urls import patterns
+from django.conf.urls import include, url
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, get_object_or_404
@@ -87,10 +87,10 @@ class CategoryAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         admin_view = self.admin_site.admin_view
-        urls = patterns('',
-            (r'^(?P<item_pk>\d+)/move_up/$', admin_view(self.move_up)),
-            (r'^(?P<item_pk>\d+)/move_down/$', admin_view(self.move_down)),
-        )
+        urls = [
+            url(r'^(?P<item_pk>\d+)/move_up/$', admin_view(self.move_up)),
+            url(r'^(?P<item_pk>\d+)/move_down/$', admin_view(self.move_down)),
+        ]
         return urls + super(CategoryAdmin, self).get_urls()
 
     def move_up(self, request, item_pk):

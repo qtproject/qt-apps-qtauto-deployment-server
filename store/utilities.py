@@ -57,6 +57,12 @@ def makeTagList(pkgdata):
                     taglist.append(SoftwareTag(i))
     return str(taglist)
 
+def getRequestDictionary(request):
+    if request.method == "POST":
+        return request.POST
+    else:
+        return request.GET
+
 def packagePath(appId = None, architecture = None):
     path = settings.MEDIA_ROOT + 'packages/'
     if (appId is not None) and (architecture is not None):

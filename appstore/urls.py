@@ -30,32 +30,33 @@
 ##
 #############################################################################
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls import include, url
 from django.contrib import admin
+from store import api as store_api
 import settings
 
-base_urlpatterns = patterns('',
+base_urlpatterns = [
     url(r'^admin/', include(admin.site.urls)),
 
-    url(r'^hello$',             'store.api.hello'),
-    url(r'^login$',             'store.api.login'),
-    url(r'^logout$',            'store.api.logout'),
-    url(r'^app/list$',          'store.api.appList'),
-    url(r'^app/icon',           'store.api.appIcon'),
-    url(r'^app/description',    'store.api.appDescription'),
-    url(r'^app/purchase',       'store.api.appPurchase'),
-    url(r'^app/download/(.*)$', 'store.api.appDownload'),
-    url(r'^category/list$',     'store.api.categoryList'),
-    url(r'^category/icon$',     'store.api.categoryIcon'),
-    url(r'^upload$',            'store.api.upload'),
-)
+    url(r'^hello$',             store_api.hello),
+    url(r'^login$',             store_api.login),
+    url(r'^logout$',            store_api.logout),
+    url(r'^app/list$',          store_api.appList),
+    url(r'^app/icon',           store_api.appIcon),
+    url(r'^app/description',    store_api.appDescription),
+    url(r'^app/purchase',       store_api.appPurchase),
+    url(r'^app/download/(.*)$', store_api.appDownload),
+    url(r'^category/list$',     store_api.categoryList),
+    url(r'^category/icon$',     store_api.categoryIcon),
+    url(r'^upload$',            store_api.upload),
+]
 
 
 prefix = '^'
 if settings.URL_PREFIX !='':
     prefix = prefix + settings.URL_PREFIX + '/'
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(prefix, include(base_urlpatterns)),
-)
+]
 

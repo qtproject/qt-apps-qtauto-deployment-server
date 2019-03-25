@@ -1,6 +1,6 @@
 pkg-resources==0.0.0
 PyYAML
-django==1.7.9
+django==1.11
 django-common
 pyOpenSSL
 M2Crypto

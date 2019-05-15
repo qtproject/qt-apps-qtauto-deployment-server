@@ -91,7 +91,7 @@ def downloadPath():
     return settings.MEDIA_ROOT + 'downloads/'
 
 
-def isValidDnsName(dnsName, errorString):
+def isValidDnsName(dnsName, errorList):
     # see also in AM: src/common-lib/utilities.cpp / isValidDnsName()
 
     try:
@@ -106,7 +106,7 @@ def isValidDnsName(dnsName, errorString):
 
         labels = dnsName.split('.')
         if len(labels) < 3:
-            raise Exception('wrong format - needs to consist of at least three parts separated by .')
+            raise Exception('wrong format - needs to be in reverse-DNS notation and consist of at least three parts separated by .')
 
         # standard domain name requirements from the RFCs 1035 and 1123
 
@@ -125,7 +125,7 @@ def isValidDnsName(dnsName, errorString):
         return True
 
     except Exception as error:
-        errorString = str(error)
+        errorList[0] = str(error)
         return False
 
 
@@ -353,9 +353,9 @@ def parseAndValidatePackageMetadata(packageFile, certificates = []):
     if pkgdata['header']['applicationId'] != pkgdata['info']['id']:
         raise Exception('the id fields in --PACKAGE-HEADER-- and info.yaml are different: %s vs. %s' % (pkgdata['header']['applicationId'], pkgdata['info']['id']))
 
-    error = ''
+    error = ['']
     if not isValidDnsName(pkgdata['info']['id'], error):
-        raise Exception('invalid id: %s' % error)
+        raise Exception('invalid id: %s' % error[0])
 
     if pkgdata['header']['diskSpaceUsed'] <= 0:
         raise Exception('the diskSpaceUsed field in --PACKAGE-HEADER-- is not > 0, but %d' % pkgdata['header']['diskSpaceUsed'])

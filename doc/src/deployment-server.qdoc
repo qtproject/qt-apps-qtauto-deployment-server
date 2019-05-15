@@ -102,7 +102,7 @@
     \c{libffi-dev} package. Next, prepare the virtual environment:
 
     \code
-        virtualenv ./venv
+        virtualenv -p python2.7 ./venv
         ./venv/bin/pip install -r requirements.txt
     \endcode
 
@@ -116,6 +116,31 @@
     \code
       ./manage.py expire-downloads
     \endcode
+
+    \section2 Activate the Python Virtual Environment
+
+    Before you run \c manage.py, source the activation script on the console where you will be using it.
+
+    \code
+      . ./venv/bin/activate
+    \endcode
+
+    This activation is done once per session only:
+
+
+    \section2 Prepare Your Databases on the Server
+
+    Before you run the server, first, you must prepare the databases. Also, you need to create an administrative user.
+
+    \code
+      ./manage.py makemigrations
+      ./manage.py migrate
+      ./manage.py createsuperuser
+    \endcode
+
+    Make sure that the server has a user added for Neptune 3 UI's Downloads App. Currently the username and
+    password are hardcoded in \c apps/com.pelagicore.downloads/stores/ServerConfig.qml:78.
+
 
     \section2 Start the Server
 

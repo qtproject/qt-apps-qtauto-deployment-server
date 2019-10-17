@@ -118,6 +118,7 @@ class AppAdminForm(forms.ModelForm):
         self.appId = pkgdata['info']['id']
         self.name = pkgdata['storeName']
         self.architecture = pkgdata['architecture']
+        self.tags = makeTagList(pkgdata)
 
         # check if this really is an update
         if hasattr(self, 'instance') and self.instance.appid:
@@ -127,13 +128,13 @@ class AppAdminForm(forms.ModelForm):
                 raise forms.ValidationError(_('Validation error: an update cannot change the application architecture from %s to %s' % (self.instance.architecture, self.architecture)))
         else:
             try:
-                if App.objects.get(appid__exact = self.appId, architecture__exact = self.architecture):
-                    raise forms.ValidationError(_('Validation error: another application with id %s and architecture %s already exists' % (str(self.appId), str(self.architecture))))
+                if App.objects.get(appid__exact = self.appId, architecture__exact = self.architecture, tags__exact = self.tags):
+                    raise forms.ValidationError(_('Validation error: another application with id %s , tags %s and architecture %s already exists' % (str(self.appId), str(self.tags), str(self.architecture))))
             except App.DoesNotExist:
                 pass
 
         # write icon into file to serve statically
-        success, error = writeTempIcon(self.appId, self.architecture, pkgdata['icon'])
+        success, error = writeTempIcon(self.appId, self.architecture, self.tags, pkgdata['icon'])
         if not success:
             raise forms.ValidationError(_(error))
 

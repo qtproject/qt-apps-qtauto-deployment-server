@@ -63,23 +63,27 @@ def getRequestDictionary(request):
     else:
         return request.GET
 
-def packagePath(appId = None, architecture = None):
+def packagePath(appId = None, architecture = None, tags = None):
     path = settings.MEDIA_ROOT + 'packages/'
+    if tags is None:
+        tags = ""
     if (appId is not None) and (architecture is not None):
-        return path + '_'.join([appId, architecture]).replace('/','_').replace('\\','_')
+        return path + '_'.join([appId, architecture, tags]).replace('/','_').replace('\\','_')
     return path
 
-def iconPath(appId = None, architecture = None):
+def iconPath(appId = None, architecture = None, tags = None):
     path = settings.MEDIA_ROOT + 'icons/'
+    if tags is None:
+        tags = ""
     if (appId is not None) and (architecture is not None):
-        return path + '_'.join([appId, architecture]).replace('/','_').replace('\\','_') + '.png'
+        return path + '_'.join([appId, architecture, tags]).replace('/','_').replace('\\','_') + '.png'
     return path
 
-def writeTempIcon(appId, architecture, icon):
+def writeTempIcon(appId, architecture, tags, icon):
     try:
         if not os.path.exists(iconPath()):
             os.makedirs(iconPath())
-        tempicon = open(iconPath(appId, architecture), 'w')
+        tempicon = open(iconPath(appId, architecture, tags), 'w')
         tempicon.write(icon)
         tempicon.flush()
         tempicon.close()

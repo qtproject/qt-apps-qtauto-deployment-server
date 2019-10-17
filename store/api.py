@@ -238,7 +238,7 @@ def appIcon(request):
     try:
         app = App.objects.filter(appid__exact = appId, architecture__in = archlist).order_by('architecture')
         app = app.last()
-        with open(iconPath(app.appid,app.architecture), 'rb') as iconPng:
+        with open(iconPath(app.appid,app.architecture,app.tags), 'rb') as iconPng:
             response = HttpResponse(content_type = 'image/png')
             response.write(iconPng.read())
             return response
@@ -262,11 +262,11 @@ def appPurchase(request):
 
         app = App.objects.filter(appid__exact = getRequestDictionary(request)['id'], architecture__in=archlist).order_by('architecture')
         app = app.last()
-        fromFilePath = packagePath(app.appid, app.architecture)
+        fromFilePath = packagePath(app.appid, app.architecture, app.tags)
 
         # we should not use obvious names here, but just hash the string.
         # this would be a nightmare to debug though and this is a development server :)
-        toFile = str(app.appid) + '_' + str(request.user.id) + '_' + str(app.architecture) + '_' + str(deviceId) + '.appkg'
+        toFile = str(app.appid) + '_' + str(request.user.id) + '_' + str(app.architecture) + '_' + str(app.tags) + '_'+ str(deviceId) + '.appkg'
         toPath = downloadPath()
         if not os.path.exists(toPath):
             os.makedirs(toPath)

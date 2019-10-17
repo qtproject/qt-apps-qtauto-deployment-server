@@ -86,7 +86,7 @@ class Vendor(models.Model):
 
 
 def content_file_name(instance, filename):
-    return packagePath(instance.appid, instance.architecture)
+    return packagePath(instance.appid, instance.architecture, instance.tags)
 
 class App(models.Model):
     appid = models.CharField(max_length = 200)
@@ -111,7 +111,7 @@ class App(models.Model):
 
     def save(self, *args, **kwargs):
         try:
-            this = App.objects.get(appid=self.appid,architecture=self.architecture)
+            this = App.objects.get(appid=self.appid,architecture=self.architecture,tags=self.tags) #FIXME: This should be 'tags match, not exact same tags'
             if this.file != self.file:
                 this.file.delete(save=False)
         except:
@@ -124,14 +124,14 @@ def savePackageFile(pkgdata, pkgfile, category, vendor, description, shortdescri
     name = pkgdata['storeName']
     architecture = pkgdata['architecture']
     tags = makeTagList(pkgdata)
-    success, error = writeTempIcon(appId, architecture, pkgdata['icon'])
+    success, error = writeTempIcon(appId, architecture, tags, pkgdata['icon'])
     if not success:
         raise Exception(error)
 
     exists = False
     app = None
     try:
-        app = App.objects.get(appid__exact=appId, architecture__exact=architecture)
+        app = App.objects.get(appid__exact=appId, architecture__exact=architecture, tags__exact=tags)
         exists = True
     except App.DoesNotExist:
         pass
@@ -145,12 +145,12 @@ def savePackageFile(pkgdata, pkgfile, category, vendor, description, shortdescri
         app.description = description
         app.briefDescription = shortdescription
         app.architecture = architecture
-        app.file.save(packagePath(appId, architecture), pkgfile)
+        app.file.save(packagePath(appId, architecture, tags), pkgfile)
         app.save()
     else:
         app, created = App.objects.get_or_create(name=name, tags=tags, vendor=vendor,
                                                  category=category, appid=appId,
                                                  briefDescription=shortdescription, description=description,
                                                  architecture=architecture)
-        app.file.save(packagePath(appId, architecture), pkgfile)
+        app.file.save(packagePath(appId, architecture, tags), pkgfile)
         app.save()

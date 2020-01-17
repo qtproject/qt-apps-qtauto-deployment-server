@@ -1,6 +1,6 @@
 pkg-resources==0.0.0
 PyYAML
-django==1.11
+django==1.11.27
 django-common
 django-ordered-model==2.1
 pyOpenSSL

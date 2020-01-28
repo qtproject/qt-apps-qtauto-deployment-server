@@ -235,9 +235,12 @@ def appDescription(request):
 
 def appIcon(request):
     archlist = ['All', ]
-    if 'architecture' in request.session:
+    dictionary = getRequestDictionary(request)
+    if 'architecture' in dictionary:
+        archlist.append(normalizeArch(dictionary['architecture']))
+    elif 'architecture' in request.session:
         archlist.append(request.session['architecture'])
-    appId = getRequestDictionary(request)['id']
+    appId = dictionary['id']
     try:
         app = App.objects.filter(appid__exact = appId, architecture__in = archlist).order_by('architecture')
         app = app.last()

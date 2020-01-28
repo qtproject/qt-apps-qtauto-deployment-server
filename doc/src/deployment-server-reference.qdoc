@@ -227,6 +227,12 @@
          \row
              \li id
              \li The app ID.
+        \row
+            \li architecture
+            \li An optional parameter used to filter icons by architecture. Overrides architecture
+                specified in session. Receives the CPU architecture. If architecture was not specified
+                either in session or in this parameter, only icons showing \e{All} architecture
+                are listed.
      \endtable
 
      Returns a PNG image if the app exists; an HTTP 404 error otherwise.

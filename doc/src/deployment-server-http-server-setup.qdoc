@@ -125,4 +125,18 @@ The code that needs to be added is:
 Where \e{<url_prefix>} is the same as in \e{settings.py} file, and \e{<port>} is the port on which the
 deployment server instance is running.
 
+\section1 Serving static files outside of django app
+
+It is possible to speed up working of the admin pages of deployment server by serving static files
+separately. In order to achieve that, webserver should be configured to serve \e{static/} subdirectory of
+deployment server installation as \e{static/} subdirectory of the instance. (If deployment server is
+hosted as \e{http://deployment.server.name/}, then \e{static/} directory in the sources should be redirected
+to \e{http://deployment.server.name/static/}, while bypassing the django app.)
+
+After configuring that, static files collection should be performed with this command:
+
+\code
+  ./venv/bin/python manage.py collect static
+\endcode
+
 */

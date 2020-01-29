@@ -5,3 +5,4 @@ media/
 certificates/
 .idea/*
 venv/*
+static/*

@@ -138,6 +138,8 @@ def normalizeArch(inputArch):
 
     """
     parts = inputArch.split('-')
+    if len(parts) <4:
+        return "" # Invalid format
     #Drop anything non-numeric from word_size field
     parts[2]=re.sub(r"\D", "", parts[2])
     #Transform kernelType into binary format

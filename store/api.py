@@ -65,7 +65,10 @@ def hello(request):
                 break
             request.session[j] = str(versionmap)
     if 'architecture' in getRequestDictionary(request):
-        request.session['architecture'] = normalizeArch(getRequestDictionary(request)['architecture'])
+        arch = normalizeArch(getRequestDictionary(request)['architecture'])
+        if arch == "":
+            status = 'incompatible-architecture'
+        request.session['architecture'] = arch
     else:
         request.session['architecture'] = ''
     return JsonResponse({'status': status})

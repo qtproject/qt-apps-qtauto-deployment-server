@@ -44,6 +44,7 @@ from authdecorators import logged_in_or_basicauth, is_staff_member
 from models import App, Category, Vendor, savePackageFile
 from utilities import parsePackageMetadata, parseAndValidatePackageMetadata, addSignatureToPackage
 from utilities import packagePath, iconPath, downloadPath
+from osandarch import normalizeArch
 from tags import SoftwareTagList
 
 
@@ -65,7 +66,10 @@ def hello(request):
                 break
             request.session[j] = str(versionmap)
     if 'architecture' in request.REQUEST:
-        request.session['architecture'] = normalizeArch(request.REQUEST['architecture'])
+        arch = normalizeArch(request.REQUEST['architecture'])
+        if arch == "":
+            status = 'incompatible-architecture'
+        request.session['architecture'] = arch
     else:
         request.session['architecture'] = ''
     return JsonResponse({'status': status})

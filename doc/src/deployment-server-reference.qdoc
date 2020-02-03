@@ -78,7 +78,7 @@
             \li Value
             \li Description
         \row
-            \li {1,5} status
+            \li {1,6} status
             \li ok
             \li Successful
         \row
@@ -90,6 +90,9 @@
         \row
             \li incompatible-version
             \li The API version you are using is not compatible.
+        \row
+            \li incompatible-architecture
+            \li The architecture parameter was malformed or server was unable to parse it.
         \row
             \li malformed-tag
             \li The tag format is incorrect, may not be alphanumeric, or could

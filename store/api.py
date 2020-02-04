@@ -282,7 +282,13 @@ def appPurchase(request):
                 pkgdata = parsePackageMetadata(package)
                 addSignatureToPackage(fromFilePath, toPath + toFile, pkgdata['rawDigest'], deviceId)
         else:
-            shutil.copyfile(fromFilePath, toPath + toFile)
+            try:
+                shutil.copyfile(fromFilePath, toPath + toFile)
+            except Exception as error:
+                if type(error) == IOError:
+                    raise IOError(error.args[0],error.args[1], os.path.basename(fromFilePath))
+                else:
+                    raise error
 
         if settings.URL_PREFIX != '':
             downloadUri = '/' + settings.URL_PREFIX + '/app/download/' + toFile

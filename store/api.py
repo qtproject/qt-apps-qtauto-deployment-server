@@ -32,6 +32,7 @@
 
 import os
 import shutil
+import hashlib
 
 from django.conf import settings
 from django.db.models import Q, Count
@@ -272,7 +273,10 @@ def appPurchase(request):
 
         # we should not use obvious names here, but just hash the string.
         # this would be a nightmare to debug though and this is a development server :)
-        toFile = str(app.appid) + '_' + str(request.user.id) + '_' + str(app.architecture) + '_' + str(app.tags) + '_'+ str(deviceId) + '.appkg'
+        toFile = str(app.appid) + '_' + str(request.user.id) + '_' + str(app.architecture) + '_' + str(app.tags) + '_'+ str(deviceId)
+        if not settings.DEBUG:
+            toFile = hashlib.sha256(toFile).hexdigest()
+        toFile += '.appkg'
         toPath = downloadPath()
         if not os.path.exists(toPath):
             os.makedirs(toPath)

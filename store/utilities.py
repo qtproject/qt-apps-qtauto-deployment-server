@@ -68,7 +68,7 @@ def packagePath(appId = None, architecture = None, tags = None):
     if tags is None:
         tags = ""
     if (appId is not None) and (architecture is not None):
-        return path + '_'.join([appId, architecture, tags]).replace('/','_').replace('\\','_')
+        path = path + '_'.join([appId, architecture, tags]).replace('/','_').replace('\\','_').replace(':','x3A').replace(',','x2C')
     return path
 
 def iconPath(appId = None, architecture = None, tags = None):
@@ -76,7 +76,7 @@ def iconPath(appId = None, architecture = None, tags = None):
     if tags is None:
         tags = ""
     if (appId is not None) and (architecture is not None):
-        return path + '_'.join([appId, architecture, tags]).replace('/','_').replace('\\','_') + '.png'
+        return path + '_'.join([appId, architecture, tags]).replace('/','_').replace('\\','_').replace(':','x3A').replace(',','x2C') + '.png'
     return path
 
 def writeTempIcon(appId, architecture, tags, icon):

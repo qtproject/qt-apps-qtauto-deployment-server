@@ -42,7 +42,9 @@ https://docs.djangoproject.com/en/1.7/ref/settings/
 
 APPSTORE_MAINTENANCE = False
 APPSTORE_PLATFORM_ID = 'NEPTUNE3'
-APPSTORE_PLATFORM_VERSION = 1
+APPSTORE_PLATFORM_VERSION = 2     # Maximum supported platform version:
+                                  # version 1 - only old package format
+                                  # version 2 - old and new package formats
 APPSTORE_DOWNLOAD_EXPIRY = 10     # in minutes
 APPSTORE_BIND_TO_DEVICE_ID = True # unique downloads for each device
 APPSTORE_NO_SECURITY = True       # ignore developer signatures and do not generate store signatures

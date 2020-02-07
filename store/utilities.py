@@ -31,20 +31,18 @@
 #############################################################################
 
 import tarfile
-import hashlib
-import hmac
-import yaml
-import sys
-import tarfile
 import tempfile
 import base64
 import os
+import hashlib
+import hmac
+import yaml
 import magic
 
-from M2Crypto import SMIME, BIO, X509
-from OpenSSL.crypto import load_pkcs12, FILETYPE_PEM, dump_privatekey, dump_certificate
-
 from django.conf import settings
+from OpenSSL.crypto import load_pkcs12, FILETYPE_PEM, dump_privatekey, dump_certificate
+from M2Crypto import SMIME, BIO, X509
+
 from tags import SoftwareTagList, SoftwareTag
 import osandarch
 
@@ -196,11 +194,13 @@ def parsePackageMetadata(packageFile):
     foundInfo = False
     foundIcon = False
     digest = hashlib.new('sha256')
-    #Init magic sequnce checker
+    #Init magic sequence checker
     ms = magic.Magic()
     osset = set()
     archset = set()
     pkgfmt = set()
+
+    packageHeaders = ['am-application', 'am-package']
 
     for entry in pkg:
         fileCount = fileCount + 1
@@ -234,9 +234,12 @@ def parsePackageMetadata(packageFile):
 
             if len(docs) != 2:
                 raise Exception('file --PACKAGE-HEADER-- does not consist of 2 YAML documents')
-            if docs[0]['formatVersion'] != 1 or docs[0]['formatType'] != 'am-package-header':
+            if not (docs[0]['formatVersion'] in [1, 2] and docs[0]['formatType'] == 'am-package-header'):
                 raise Exception('file --PACKAGE-HEADER-- has an invalid document type')
 
+            # Set initial package format version from --PACKAGE-HEADER--
+            # it must be consistent with info.yaml file
+            pkgdata['packageFormat'] = docs[0]
             pkgdata['header'] = docs[1]
         elif fileCount == 1:
             raise Exception('the first file in the package is not --PACKAGE-HEADER--, but %s' % entry.name)
@@ -271,10 +274,13 @@ def parsePackageMetadata(packageFile):
 
             if len(docs) != 2:
                 raise Exception('file %s does not consist of 2 YAML documents' % entry.name)
-            if docs[0]['formatVersion'] != 1 or docs[0]['formatType'] != 'am-application':
+            if docs[0]['formatVersion'] != 1 or not docs[0]['formatType'] in packageHeaders:
                 raise Exception('file %s has an invalid document type' % entry.name)
+            if (packageHeaders.index(docs[0]['formatType']) + 1) > pkgdata['packageFormat']['formatVersion']:
+                raise Exception('inconsistent package version between --PACKAGE-HEADER-- and info.yaml files.')
 
             pkgdata['info'] = docs[1]
+            pkgdata['info.type'] = docs[0]['formatType']
             foundInfo = True
 
         elif entry.name == 'icon.png':
@@ -310,8 +316,10 @@ def parsePackageMetadata(packageFile):
 
     if len(docs) < 2:
         raise Exception('file --PACKAGE-FOOTER-- does not consist of at least 2 YAML documents')
-    if docs[0]['formatVersion'] != 1 or docs[0]['formatType'] != 'am-package-footer':
+    if not (docs[0]['formatVersion'] in [1, 2]) or docs[0]['formatType'] != 'am-package-footer':
         raise Exception('file --PACKAGE-FOOTER-- has an invalid document type')
+    if docs[0]['formatVersion'] != pkgdata['packageFormat']['formatVersion']:
+        raise Exception('inconsistent package version between --PACKAGE-HEADER-- and --PACKAGE-FOOTER-- files.')
 
     pkgdata['footer'] = docs[1]
     for doc in docs[2:]:
@@ -326,7 +334,7 @@ def parsePackageMetadata(packageFile):
         raise Exception('Multiple binary architectures detected in package')
     if len(pkgfmt) > 1:
         raise Exception('Multiple binary formats detected in package')
-    if (len(osset) == 0) and (len(archset) == 0) and (len(pkgfmt) == 0):
+    if (not osset) and (not archset) and (not pkgfmt):
         pkgdata['architecture'] = 'All'
     else:
         pkgdata['architecture'] = list(archset)[0]
@@ -339,8 +347,24 @@ def parsePackageMetadata(packageFile):
 def parseAndValidatePackageMetadata(packageFile, certificates = []):
     pkgdata = parsePackageMetadata(packageFile)
 
-    partFields = { 'header': [ 'applicationId', 'diskSpaceUsed' ],
-                   'info':   [ 'id', 'name', 'icon', 'runtime', 'code' ],
+    if pkgdata['packageFormat']['formatVersion'] == 1:
+        packageIdKey = 'applicationId'
+    elif pkgdata['packageFormat']['formatVersion'] == 2:
+        packageIdKey = 'packageId'
+    else:
+        raise Exception('Unknown package formatVersion %s' % pkgdata['packageFormat']['formatVersion'])
+
+    if pkgdata['info.type'] == 'am-package':
+        infoList = ['id', 'name', 'icon', 'applications']
+    elif pkgdata['info.type'] == 'am-application':
+        infoList = ['id', 'name', 'icon', 'runtime', 'code']
+    else:
+        raise Exception('Unknown info.yaml formatType %s' % pkgdata['info.type'])
+
+
+
+    partFields = { 'header': [ packageIdKey, 'diskSpaceUsed' ],
+                   'info':   infoList,
                    'footer': [ 'digest' ],
                    'icon':   [],
                    'digest': [] }
@@ -354,8 +378,8 @@ def parseAndValidatePackageMetadata(packageFile, certificates = []):
             if field not in data:
                 raise Exception('metadata %s is missing in the %s part' % (field, part))
 
-    if pkgdata['header']['applicationId'] != pkgdata['info']['id']:
-        raise Exception('the id fields in --PACKAGE-HEADER-- and info.yaml are different: %s vs. %s' % (pkgdata['header']['applicationId'], pkgdata['info']['id']))
+    if pkgdata['header'][packageIdKey] != pkgdata['info']['id']:
+        raise Exception('the id fields in --PACKAGE-HEADER-- and info.yaml are different: %s vs. %s' % (pkgdata['header'][packageIdKey], pkgdata['info']['id']))
 
     error = ['']
     if not isValidDnsName(pkgdata['info']['id'], error):
@@ -375,13 +399,13 @@ def parseAndValidatePackageMetadata(packageFile, certificates = []):
     elif len(pkgdata['info']['name']) > 0:
         name = pkgdata['info']['name'].values()[0]
 
-    if len(name) == 0:
+    if not name:
         raise Exception('could not deduce a suitable package name from the info part')
 
     pkgdata['storeName'] = name
 
     if pkgdata['digest'] != pkgdata['footer']['digest']:
-            raise Exception('digest does not match, is: %s, but should be %s' % (pkgdata['digest'], pkgdata['footer']['digest']))
+        raise Exception('digest does not match, is: %s, but should be %s' % (pkgdata['digest'], pkgdata['footer']['digest']))
     if 'storeSignature' in pkgdata['footer']:
         raise Exception('cannot upload a package with an existing storeSignature field')
 
@@ -422,14 +446,18 @@ def addFileToPackage(sourcePackageFile, destinationPackageFile, fileName, fileCo
     dst.close()
     src.close()
 
-def addSignatureToPackage(sourcePackageFile, destinationPackageFile, digest, deviceId):
+def addSignatureToPackage(sourcePackageFile, destinationPackageFile, digest, deviceId, version=1):
     signingCertificate = ''
     with open(settings.APPSTORE_STORE_SIGN_PKCS12_CERTIFICATE) as cert:
         signingCertificate = cert.read()
 
-    digestPlusId = hmac.new(deviceId, digest, hashlib.sha256).digest();
-    signature = createSignature(digestPlusId, signingCertificate, settings.APPSTORE_STORE_SIGN_PKCS12_PASSWORD)
+    digestPlusId = hmac.new(deviceId, digest, hashlib.sha256).digest()
+    signature = createSignature(digestPlusId, signingCertificate,
+                                settings.APPSTORE_STORE_SIGN_PKCS12_PASSWORD)
 
-    yamlContent = yaml.dump_all([{ 'formatVersion': 1, 'formatType': 'am-package-footer'}, { 'storeSignature': base64.encodestring(signature) }], explicit_start=True)
+    yamlContent = yaml.dump_all([{'formatVersion': version, 'formatType': 'am-package-footer'},
+                                 {'storeSignature': base64.encodestring(signature)}],
+                                explicit_start=True)
 
-    addFileToPackage(sourcePackageFile, destinationPackageFile, '--PACKAGE-FOOTER--store-signature', yamlContent)
+    addFileToPackage(sourcePackageFile, destinationPackageFile,
+                     '--PACKAGE-FOOTER--store-signature', yamlContent)

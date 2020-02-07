@@ -51,27 +51,38 @@ from tags import SoftwareTagList
 
 def hello(request):
     status = 'ok'
+    dictionary = getRequestDictionary(request)
+    try:
+        version = int(dictionary.get("version", "-1"))
+        if version > 256: #Sanity check against DoS attack (memory exhaustion)
+            version = -1
+    except:
+        version = -1
+
     if settings.APPSTORE_MAINTENANCE:
         status = 'maintenance'
-    elif getRequestDictionary(request).get("platform", "") != str(settings.APPSTORE_PLATFORM_ID):
+    elif dictionary.get("platform", "") != str(settings.APPSTORE_PLATFORM_ID):
         status = 'incompatible-platform'
-    elif getRequestDictionary(request).get("version", "") != str(settings.APPSTORE_PLATFORM_VERSION):
+    elif not ((version) > 0 and (version <= settings.APPSTORE_PLATFORM_VERSION)):
         status = 'incompatible-version'
 
     for j in ("require_tag", "conflicts_tag",):
-        if j in getRequestDictionary(request): #Tags are coma-separated,
+        if j in dictionary: #Tags are coma-separated,
             versionmap = SoftwareTagList()
             if not versionmap.parse(getRequestDictionary(request)[j]):
                 status = 'malformed-tag'
                 break
             request.session[j] = str(versionmap)
-    if 'architecture' in getRequestDictionary(request):
+
+    if 'architecture' in dictionary:
         arch = normalizeArch(getRequestDictionary(request)['architecture'])
         if arch == "":
             status = 'incompatible-architecture'
         request.session['architecture'] = arch
     else:
         request.session['architecture'] = ''
+
+    request.session['pkgversions'] = range(1, version + 1)
     return JsonResponse({'status': status})
 
 
@@ -161,10 +172,11 @@ def upload(request):
 
 def appList(request):
     apps = App.objects.all()
-    if 'filter' in getRequestDictionary(request):
-        apps = apps.filter(name__contains = getRequestDictionary(request)['filter'])
-    if 'category_id' in getRequestDictionary(request):
-        catId = getRequestDictionary(request)['category_id']
+    dictionary = getRequestDictionary(request)
+    if 'filter' in dictionary:
+        apps = apps.filter(name__contains = dictionary['filter'])
+    if 'category_id' in dictionary:
+        catId = dictionary['category_id']
         if catId != -1: # All metacategory
             apps = apps.filter(category__exact = catId)
 
@@ -189,7 +201,13 @@ def appList(request):
     archlist = ['All', ]
     if 'architecture' in request.session:
         archlist.append(request.session['architecture'])
+
+    versionlist = [1]
+    if 'pkgversions' in request.session:
+        versionlist = request.session['pkgversions']
+
     apps = apps.filter(architecture__in = archlist)
+    apps = apps.filter(pkgformat__in = versionlist)
 
     # After filtering, there are potential duplicates in list. And we should prefer native applications to pure qml ones
     # due to speedups offered.
@@ -284,7 +302,8 @@ def appPurchase(request):
         if not settings.APPSTORE_NO_SECURITY:
             with open(fromFilePath, 'rb') as package:
                 pkgdata = parsePackageMetadata(package)
-                addSignatureToPackage(fromFilePath, toPath + toFile, pkgdata['rawDigest'], deviceId)
+                addSignatureToPackage(fromFilePath, toPath + toFile, pkgdata['rawDigest'], deviceId,
+                                      pkgdata['packageFormat']['formatVersion'])
         else:
             try:
                 shutil.copyfile(fromFilePath, toPath + toFile)

@@ -1,6 +1,6 @@
 #############################################################################
 ##
-## Copyright (C) 2019 Luxoft Sweden AB
+## Copyright (C) 2020 Luxoft Sweden AB
 ## Copyright (C) 2018 Pelagicore AG
 ## Contact: https://www.qt.io/licensing/
 ##
@@ -31,17 +31,18 @@
 #############################################################################
 
 import os
+import StringIO
+from PIL import Image, ImageChops
 
 from django import forms
 from django.contrib import admin
 from django.utils.translation import ugettext as _
 from django.utils.translation import ugettext_lazy
-from ordered_model.admin import OrderedModelAdmin
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from ordered_model.admin import OrderedModelAdmin
 
 from store.models import *
 from utilities import parseAndValidatePackageMetadata, writeTempIcon, makeTagList
-import StringIO
 
 class CategoryAdminForm(forms.ModelForm):
     class Meta:
@@ -65,7 +66,7 @@ class CategoryAdminForm(forms.ModelForm):
                 im = im.convert('LA')
             else:
                 # No conversion, icons are uploaded as-is, only scaling is used.
-                im = Image.open(cleared_data['icon'])
+                im = Image.open(cleaned_data['icon'])
             size = (settings.ICON_SIZE_X,settings.ICON_SIZE_Y,)
             im.thumbnail(size, Image.ANTIALIAS)
             imagefile = StringIO.StringIO()
@@ -99,7 +100,7 @@ class CategoryAdmin(OrderedModelAdmin):
 
 class AppAdminForm(forms.ModelForm):
     class Meta:
-        exclude = ["appid", "name", "tags", "architecture", 'version']
+        exclude = ["appid", "name", "tags", "architecture", 'version', 'pkgformat']
 
     appId = ""
     name = ""
@@ -109,7 +110,6 @@ class AppAdminForm(forms.ModelForm):
         file = cleaned_data.get('file')
 
         # validate package
-        pkgdata = None
         try:
             pkgdata = parseAndValidatePackageMetadata(file)
         except Exception as error:
@@ -149,12 +149,13 @@ class AppAdminForm(forms.ModelForm):
         m.file.seek(0)
         pkgdata = parseAndValidatePackageMetadata(m.file)
         m.tags = makeTagList(pkgdata)
+        m.pkgformat = pkgdata['packageFormat']['formatVersion']
         return m
 
 
 class AppAdmin(admin.ModelAdmin):
     form = AppAdminForm
-    list_display = ('name', 'appid', 'architecture', 'version', 'tags')
+    list_display = ('name', 'appid', 'architecture', 'version', 'pkgformat', 'tags')
 
     def save_model(self, request, obj, form, change):
         obj.save()

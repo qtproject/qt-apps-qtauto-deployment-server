@@ -1,6 +1,6 @@
 #############################################################################
 ##
-## Copyright (C) 2019 Luxoft Sweden AB
+## Copyright (C) 2020 Luxoft Sweden AB
 ## Copyright (C) 2018 Pelagicore AG
 ## Contact: https://www.qt.io/licensing/
 ##
@@ -31,14 +31,12 @@
 #############################################################################
 
 import os
-from PIL import Image, ImageChops
 
 from django.db import models
 from ordered_model.models import OrderedModel
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.storage import FileSystemStorage
-from django.db.models.fields.files import ImageFieldFile
 
 from utilities import packagePath, writeTempIcon, makeTagList
 
@@ -101,13 +99,14 @@ class App(models.Model):
     tags = models.TextField(blank=True)
     architecture = models.CharField(max_length=20, default='All')
     version = models.CharField(max_length=20, default='0.0.0')
+    pkgformat = models.IntegerField()
 
     class Meta:
         """Makes the group of id and arch - a unique identifier"""
         unique_together = (('appid', 'architecture', 'tags'),)
 
     def __unicode__(self):
-        return self.name + " [" + " ".join([self.appid,self.version,self.architecture,self.tags]) + "]"
+        return self.name + " [" + " ".join([self.appid, self.version, self.architecture, self.tags]) + "]"
 
     def save(self, *args, **kwargs):
         try:
@@ -123,6 +122,7 @@ def savePackageFile(pkgdata, pkgfile, category, vendor, description, shortdescri
     appId = pkgdata['info']['id']
     name = pkgdata['storeName']
     architecture = pkgdata['architecture']
+    pkgformat = pkgdata['packageFormat']['formatVersion']
     tags = makeTagList(pkgdata)
     success, error = writeTempIcon(appId, architecture, tags, pkgdata['icon'])
     if not success:
@@ -145,12 +145,13 @@ def savePackageFile(pkgdata, pkgfile, category, vendor, description, shortdescri
         app.description = description
         app.briefDescription = shortdescription
         app.architecture = architecture
+        app.pkgformat = pkgformat
         app.file.save(packagePath(appId, architecture, tags), pkgfile)
         app.save()
     else:
-        app, created = App.objects.get_or_create(name=name, tags=tags, vendor=vendor,
-                                                 category=category, appid=appId,
-                                                 briefDescription=shortdescription, description=description,
-                                                 architecture=architecture)
+        app, _ = App.objects.get_or_create(name=name, tags=tags, vendor=vendor,
+                                           category=category, appid=appId,
+                                           briefDescription=shortdescription, description=description,
+                                           pkgformat = pkgformat, architecture=architecture)
         app.file.save(packagePath(appId, architecture, tags), pkgfile)
         app.save()

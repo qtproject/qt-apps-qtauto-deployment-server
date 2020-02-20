@@ -43,38 +43,48 @@ from django.conf import settings
 from OpenSSL.crypto import load_pkcs12, FILETYPE_PEM, dump_privatekey, dump_certificate
 from M2Crypto import SMIME, BIO, X509
 
-from tags import SoftwareTagList, SoftwareTag
-import osandarch
+from store.tags import SoftwareTagList, SoftwareTag
+import store.osandarch
 
 def makeTagList(pkgdata):
+    """Generates tag lists out of package data
+       First list - required tags, second list - conflicting tags
+    """
     taglist = SoftwareTagList()
+    tagconflicts = SoftwareTagList()
     for fields in ('extra', 'extraSigned'):
         if fields in pkgdata['header']:
             if 'tags' in pkgdata['header'][fields]:
                 for i in list(pkgdata['header'][fields]['tags']):  # Fill tags list then add them
                     taglist.append(SoftwareTag(i))
-    return str(taglist)
+            if 'conflicts' in pkgdata['header'][fields]:
+                for i in list(pkgdata['header'][fields]['conflicts']):
+                    tagconflicts.append(SoftwareTag(i))
+
+    tags_hash = str(taglist) + str(tagconflicts)
+    return taglist, tagconflicts, tags_hash
 
 def getRequestDictionary(request):
     if request.method == "POST":
         return request.POST
-    else:
-        return request.GET
+    return request.GET
 
-def packagePath(appId = None, architecture = None, tags = None):
+def packagePath(appId=None, architecture=None, tags=None):
     path = settings.MEDIA_ROOT + 'packages/'
     if tags is None:
         tags = ""
     if (appId is not None) and (architecture is not None):
-        path = path + '_'.join([appId, architecture, tags]).replace('/','_').replace('\\','_').replace(':','x3A').replace(',','x2C')
+        path = path + '_'.join([appId, architecture, tags]).replace('/', '_').\
+            replace('\\', '_').replace(':', 'x3A').replace(',', 'x2C')
     return path
 
-def iconPath(appId = None, architecture = None, tags = None):
+def iconPath(appId=None, architecture=None, tags=None):
     path = settings.MEDIA_ROOT + 'icons/'
     if tags is None:
         tags = ""
     if (appId is not None) and (architecture is not None):
-        return path + '_'.join([appId, architecture, tags]).replace('/','_').replace('\\','_').replace(':','x3A').replace(',','x2C') + '.png'
+        return path + '_'.join([appId, architecture, tags]).replace('/', '_').\
+            replace('\\', '_').replace(':', 'x3A').replace(',', 'x2C') + '.png'
     return path
 
 def writeTempIcon(appId, architecture, tags, icon):
@@ -87,7 +97,8 @@ def writeTempIcon(appId, architecture, tags, icon):
         tempicon.close()
         return True, None
     except IOError as error:
-        return False, 'Validation error: could not write icon file to media directory: %s' % str(error)
+        return False, 'Validation error: could not write icon file to media directory: %s' % \
+            str(error)
 
 def downloadPath():
     return settings.MEDIA_ROOT + 'downloads/'
@@ -300,7 +311,7 @@ def parsePackageMetadata(packageFile):
                 fil.seek(0)                         #from_buffer instead of from_file
                 filemagic = ms.from_file(fil.name)
                 fil.close()
-                osarch = osandarch.getOsArch(filemagic)
+                osarch = store.osandarch.getOsArch(filemagic)
                 if osarch: #[os, arch, endianness, bits, fmt]
                     architecture = '-'.join(osarch[1:])
                     osset.add(osarch[0])
@@ -416,7 +427,7 @@ def parseAndValidatePackageMetadata(packageFile, certificates = []):
         certificates = []
         for certFile in settings.APPSTORE_DEV_VERIFY_CA_CERTIFICATES:
             with open(certFile, 'rb') as cert:
-               certificates.append(cert.read())
+                certificates.append(cert.read())
 
         verifySignature(pkgdata['footer']['developerSignature'], pkgdata['rawDigest'], certificates)
 

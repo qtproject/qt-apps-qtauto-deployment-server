@@ -30,7 +30,6 @@
 ##
 #############################################################################
 
-import os
 import StringIO
 from PIL import Image, ImageChops
 
@@ -42,7 +41,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from ordered_model.admin import OrderedModelAdmin
 
 from store.models import *
-from utilities import parseAndValidatePackageMetadata, writeTempIcon, makeTagList
+from store.utilities import parseAndValidatePackageMetadata, writeTempIcon, makeTagList
 
 class CategoryAdminForm(forms.ModelForm):
     class Meta:
@@ -60,14 +59,14 @@ class CategoryAdminForm(forms.ModelForm):
                 # make image monochrome + alpha channel, this is done to compensate for
                 # how icons are treated in neptune3-ui
                 im = Image.open(cleaned_data['icon'])
-                grey, alpha = im.convert('LA').split()
+                grey, _ = im.convert('LA').split()
                 grey = ImageChops.invert(grey)
                 im.putalpha(grey)
                 im = im.convert('LA')
             else:
                 # No conversion, icons are uploaded as-is, only scaling is used.
                 im = Image.open(cleaned_data['icon'])
-            size = (settings.ICON_SIZE_X,settings.ICON_SIZE_Y,)
+            size = (settings.ICON_SIZE_X, settings.ICON_SIZE_Y)
             im.thumbnail(size, Image.ANTIALIAS)
             imagefile = StringIO.StringIO()
             im.save(imagefile, format='png')
@@ -100,41 +99,48 @@ class CategoryAdmin(OrderedModelAdmin):
 
 class AppAdminForm(forms.ModelForm):
     class Meta:
-        exclude = ["appid", "name", "tags", "architecture", 'version', 'pkgformat']
+        exclude = ["appid", "name", "tags", "tags_hash", "architecture", 'version', 'pkgformat']
 
     appId = ""
     name = ""
 
     def clean(self):
         cleaned_data = super(AppAdminForm, self).clean()
-        file = cleaned_data.get('file')
+        package_file = cleaned_data.get('file')
 
         # validate package
         try:
-            pkgdata = parseAndValidatePackageMetadata(file)
+            pkgdata = parseAndValidatePackageMetadata(package_file)
         except Exception as error:
             raise forms.ValidationError(_('Validation error: %s' % str(error)))
 
         self.appId = pkgdata['info']['id']
         self.name = pkgdata['storeName']
         self.architecture = pkgdata['architecture']
-        self.tags = makeTagList(pkgdata)
+        require_tags, conflict_tags, self.tags_hash = makeTagList(pkgdata)
 
         # check if this really is an update
         if hasattr(self, 'instance') and self.instance.appid:
             if self.appId != self.instance.appid:
-                raise forms.ValidationError(_('Validation error: an update cannot change the application id, tried to change from %s to %s' % (self.instance.appid, self.appId)))
+                raise forms.ValidationError(_('Validation error: an update cannot change the '
+                                              'application id, tried to change from %s to %s' %
+                                              (self.instance.appid, self.appId)))
             elif self.architecture != self.instance.architecture:
-                raise forms.ValidationError(_('Validation error: an update cannot change the application architecture from %s to %s' % (self.instance.architecture, self.architecture)))
+                raise forms.ValidationError(_('Validation error: an update cannot change the '
+                                              'application architecture from %s to %s' %
+                                              (self.instance.architecture, self.architecture)))
         else:
             try:
-                if App.objects.get(appid__exact = self.appId, architecture__exact = self.architecture, tags__exact = self.tags):
-                    raise forms.ValidationError(_('Validation error: another application with id %s , tags %s and architecture %s already exists' % (str(self.appId), str(self.tags), str(self.architecture))))
+                if App.objects.get(appid__exact=self.appId, architecture__exact=self.architecture, tags_hash__exact=self.tags_hash):
+                    raise forms.ValidationError(_('Validation error: another application with id'
+                                                  ' %s , tags %s and architecture %s already '
+                                                  'exists' % (str(self.appId), str(self.tags_hash),
+                                                              str(self.architecture))))
             except App.DoesNotExist:
                 pass
 
         # write icon into file to serve statically
-        success, error = writeTempIcon(self.appId, self.architecture, self.tags, pkgdata['icon'])
+        success, error = writeTempIcon(self.appId, self.architecture, self.tags_hash, pkgdata['icon'])
         if not success:
             raise forms.ValidationError(_(error))
 
@@ -148,19 +154,42 @@ class AppAdminForm(forms.ModelForm):
 
         m.file.seek(0)
         pkgdata = parseAndValidatePackageMetadata(m.file)
-        m.tags = makeTagList(pkgdata)
+        tags, conflict_tags, m.tags_hash = makeTagList(pkgdata)
+
+        # FIXME - add tags?
+        taglist = populateTagList(tags.list(),conflict_tags.list())
+
+        # FIXME: clean tags beforehand
         m.pkgformat = pkgdata['packageFormat']['formatVersion']
+        m.save()
+
+        for i in taglist:
+            # attach tags to app
+            m.tags.add(i)
+
         return m
 
 
 class AppAdmin(admin.ModelAdmin):
     form = AppAdminForm
-    list_display = ('name', 'appid', 'architecture', 'version', 'pkgformat', 'tags')
+    list_display = ('name', 'appid', 'architecture', 'version', 'pkgformat', 'tags_hash')
 
     def save_model(self, request, obj, form, change):
         obj.save()
 
+class TagAdmin(admin.ModelAdmin):
+    list_display = ('negative', 'name', 'version')
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        obj.save()
 
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(Vendor)
+admin.site.register(Tag, TagAdmin)
 admin.site.register(App, AppAdmin)

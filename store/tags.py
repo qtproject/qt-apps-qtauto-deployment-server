@@ -37,6 +37,10 @@ import re
 
 
 def validateTagVersion(version):
+    """
+    Validates tag version, in string form
+    :type tag: str
+    """
     for i in version:
         if not i.isalnum():
             if not ((i == "_") or (i == ".")):
@@ -45,7 +49,11 @@ def validateTagVersion(version):
 
 
 def validateTag(tag):
-    if len(tag) == 0:
+    """
+    Validates tag (with version), in string form
+    :type tag: str
+    """
+    if not tag:
         return False
     lst = tag.split(':')
     if len(lst) > 2:
@@ -60,14 +68,21 @@ def validateTag(tag):
 
 
 class SoftwareTag:
+    """
+    This class represents one tag instance. Tag is formatted in string form as two parts:
+    * tag itself, which is supposed to contain only alphanumeric symbols and _
+    * optional tag version, which consists of any non-zero number of alphanumeric parts,
+      separated by dots.
+"""
+
     def __init__(self, tag):
         """ Takes tag and parses it. If it can't parse - raises exception of invalid value
         :type tag: str
         """
-        if not ((type(tag) == str) or (type(tag) == unicode)):
-            raise (BaseException("Invalid input data-type"))
+        if not isinstance(tag, (str, unicode)):
+            raise BaseException("Invalid input data-type")
         if not validateTag(tag):
-            raise (BaseException("Malformed tag"))
+            raise BaseException("Malformed tag")
         tag_version = tag.split(':')
         self.tag = tag_version[0].lower()  # No, this should be lowercase
         self.version = None if len(tag_version) == 1 else tag_version[1]
@@ -78,36 +93,26 @@ class SoftwareTag:
     def __str__(self):
         if self.version:
             return "%s:%s" % (self.tag, self.version)
-        else:
-            return self.tag
+        return self.tag
 
     def has_version(self):
         return self.version is not None
 
     def match(self, tag):  # self is "on server", tag is "request"
+        """
+        Does tag matching for tag string/tag list minimisation
+        :param tag: tags.SoftwareTag
+        :return: Returns true, if self is more specific (or equal) than tag
+        """
         if self.tag == tag.tag:
             # Names are the same, that is good, matching versions now.
             if self.version == tag.version:
                 return True
-            else:
-                if tag.version is None:
-                    return True  # qt in request, anything else on server - True
-                if self.version is not None and self.version.startswith(tag.version + "."):
-                    return True
-                return False
+            if tag.version is None:
+                return True
+            if self.version is not None and self.version.startswith(tag.version + "."):
+                return True
         return False
-
-    def make_regex(self):
-        if self.version is None:
-            # versionless tag
-            temp_string = re.escape(self.tag)
-            regex = "(%s:[a-z0-9_.]*)|(%s)" % (temp_string, temp_string,)
-        else:
-            # tag with versions
-            temp_string = re.escape("%s:%s" % (self.tag, self.version))
-            regex = "(%s\.[a-z0-9_.]*)|(%s)" % (temp_string, temp_string)
-        return regex
-
 
 class SoftwareTagList:
     def __init__(self):
@@ -116,7 +121,7 @@ class SoftwareTagList:
 
     def __str__(self):
         lst = list()
-        for key, value in self.taglist.items():
+        for _, value in self.taglist.items():
             lst += [str(i) for i in value]
         lst.sort()
         return ",".join(lst)
@@ -136,7 +141,8 @@ class SoftwareTagList:
 
     def has_version(self, tag_name):
         if tag_name in self.taglist:
-            # This check is possible, because, when there is tag without version - it is the only tag in the list
+            # This check is possible, because, when there is tag without version -
+            # it is the only tag in the list
             if self.taglist[tag_name][0].has_version():
                 return True
         return False
@@ -160,40 +166,12 @@ class SoftwareTagList:
     def is_empty(self):
         return len(self.taglist) == 0
 
-    def make_regex(self):
+    def list(self):
         lst = list()
-        for key, value in self.taglist.items():
-            regex = "(^|,)%s(,|$)" % "|".join([i.make_regex() for i in value])
-            lst.append(regex)
+        for _, value in self.taglist.items():
+            for i in value:
+                lst.append(i)
         return lst
-
-    def match_positive(self, taglist):
-        # checks that everything from tag list matches current tags
-        # Start checking with checking if all requested tags in taglist are present in self.taglist
-        for i in taglist.taglist:
-            if i not in self.taglist:
-                return False
-        # Now we need to check if versions are matching
-        for tag in taglist.taglist:
-            if not self.has_version(tag):
-                # If package tag accepts anything - it already matches, next please
-                continue
-            if taglist.has_version(tag) and not any(v1.match(v) for v in taglist[tag] for v1 in self[tag]):
-                return False
-        return True
-
-    def match_negative(self, taglist):
-        # checks that nothing from taglist matches current tags
-        for i in taglist.taglist:
-            if i in self.taglist:
-                if (not taglist.has_version(i)) or (not self.has_version(i)):
-                    return False
-                # Tag found, version list is present. check if it matches, if it does - check is failed
-                for version in taglist[i]:
-                    for version1 in self[i]:
-                        if version1.match(version):
-                            return False
-        return True
 
     def hash(self):
         # Looks like the list is sorted, but well...
@@ -246,43 +224,6 @@ class TestSoftwareTagListMethods(unittest.TestCase):
         lst = SoftwareTagList()
         lst.append(SoftwareTag('qt'))
         self.assertFalse(lst.is_empty())
-
-    def test_empty_matches_everything(self):
-        empty_list = SoftwareTagList()
-        test_list = SoftwareTagList()
-        test_list.append(SoftwareTag('qt'))
-        self.assertTrue(test_list.match_positive(empty_list))
-        self.assertTrue(test_list.match_negative(empty_list))
-
-    def test_match_positive(self):
-        list_to_test = SoftwareTagList()
-        list_to_test.parse("qt:5.1,neptune,test:1,second_test")
-        matching_list = SoftwareTagList()
-        matching_list.parse("qt")
-        self.assertTrue(list_to_test.match_positive(matching_list))
-        matching_list.parse("qt:5.1")
-        self.assertTrue(list_to_test.match_positive(matching_list))
-        matching_list.parse("qt:5.1,qt:5.2,neptune:1")
-        self.assertTrue(list_to_test.match_positive(matching_list))
-        matching_list.parse("qt:5.1,test:2")
-        self.assertFalse(list_to_test.match_positive(matching_list))
-        matching_list.parse("qt:5.1.1")
-        self.assertFalse(list_to_test.match_positive(matching_list))
-
-    def test_match_negative(self):
-        list_to_test = SoftwareTagList()
-        list_to_test.parse("qt:5.1,neptune")
-        matching_list = SoftwareTagList()
-        matching_list.parse("qt")
-        self.assertFalse(list_to_test.match_negative(matching_list))
-        matching_list.parse("qt:5.1")
-        self.assertFalse(list_to_test.match_negative(matching_list))
-        matching_list.parse("qt:5.1,qt:5.2,neptune:1")
-        self.assertFalse(list_to_test.match_negative(matching_list))
-        matching_list.parse("qt:5.1,qt:5.2")
-        self.assertFalse(list_to_test.match_negative(matching_list))
-        matching_list.parse("test")
-        self.assertTrue(list_to_test.match_negative(matching_list))
 
     def test_append_invalid(self):
         lst = SoftwareTagList()

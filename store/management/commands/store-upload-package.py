@@ -30,18 +30,22 @@
 ##
 #############################################################################
 
-import os
-
+from optparse import make_option
 from django.core.management.base import BaseCommand, CommandError
 from django.core.files.base import ContentFile
-from store.models import App, Category, Vendor, savePackageFile
+from store.models import Category, Vendor, savePackageFile
 from store.utilities import parseAndValidatePackageMetadata
-from optparse import make_option
+
 
 
 class Command(BaseCommand):
     help = 'Uploads a package to the deployment server. This can be used for batch uploading.'
-    option_list = BaseCommand.option_list + (
+    usage_string = 'Usage: manage.py store-upload-package --vendor <vendor> --category <category>' \
+                   ' [--description <short description>] <package>'
+
+    # FIXME: this doesn't work:
+    # see https://docs.djangoproject.com/en/1.8/howto/custom-management-commands/#django.core.management.BaseCommand.add_arguments
+    self.option_list = BaseCommand.option_list + (
         make_option('--vendor',
                     action='store',
                     type="string",
@@ -62,16 +66,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if len(args) != 1:
-            raise CommandError(
-                'Usage: manage.py store-upload-package --vendor <vendor> --category <category> [--description <short description>] <package>')
+            raise CommandError(self.usage_string)
         if (not options['vendor']) or (not options['category']):
-            raise CommandError(
-                'Usage: manage.py store-upload-package --vendor <vendor> --category <category> [--description <short description>] <package>')
+            raise CommandError(self.usage_string)
         category = Category.objects.all().filter(name__exact=options['category'])
         vendor = Vendor.objects.all().filter(name__exact=options['vendor'])
-        if len(category) == 0:
+        if not category:
             raise CommandError('Non-existing category specified')
-        if len(vendor) == 0:
+        if not vendor:
             raise CommandError('Non-existing vendor specified')
 
         try:
@@ -86,7 +88,10 @@ class Command(BaseCommand):
         packagefile.seek(0)
         description = options['description']
         try:
-            savePackageFile(pkgdata, ContentFile(packagefile.read()), category[0], vendor[0], description, description)
+            package_metadata = {'category': category[0],
+                                'vendor': vendor[0],
+                                'description': description,
+                                'short_description': description}
+            savePackageFile(pkgdata, ContentFile(packagefile.read()), package_metadata)
         except Exception as error:
             raise CommandError(error)
-

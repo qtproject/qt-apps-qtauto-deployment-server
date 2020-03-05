@@ -94,6 +94,15 @@
         version "0.0.0" is assigned.
     \endlist
 
+    \note In order to create a tagged package you can use appman-packager with \c{-m} parameter, for example:
+          \code
+           appman-packager create-package package.pkg package-tmp/apps/com.luxoft.alexa/ -m "
+           {tags: ['platform:desktop']}" --verbose
+          \endcode
+
+    This command creates package and adds \c{platform} tag with \c{desktop} value to it.
+    For reference see the \l{Packager} section of \l{Qt Application Manager} documentation.
+
     \section1 Installation
 
     \section2 Set up the Server in a Virtual Environment

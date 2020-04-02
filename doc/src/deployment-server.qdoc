@@ -118,6 +118,16 @@
     Make sure to adapt the \c{APPSTORE_*} settings in \c{appstore/settings.py} to your environment,
     before you run the server.
 
+    One setting group to note is category icon resizing and decolorization settings. They are:
+    \c{ICON_SIZE_X}, \c{ICON_SIZE_Y} and \c{ICON_DECOLOR}. \c{ICON_DECOLOR} is False by default, and it
+    regulates stripping the category icon of color and alpha channel and the subsequent application
+    of the same image as an alpha channel instead.
+
+    \c{ICON_SIZE_X} and \c{ICON_SIZE_Y} are the maximum icon sizes, icons are scaled in such a way,
+    as not to exceed this size, while keeping the aspect ratio of the icon. Default values are 50x50,
+    so you should be aware that any uploaded icon will be limited to this size, unless the server is
+    reconfigured.
+
     Since package downloads are done via temporary files, you need to setup a cron-job to remove
     these temporary files periodically. The cron-job should be triggered every
     \c{settings.APPSTORE_DOWNLOAD_EXPIRY/2} minutes; it needs to run:

@@ -30,45 +30,42 @@
 ##
 #############################################################################
 
-from optparse import make_option
+import argparse
+
 from django.core.management.base import BaseCommand, CommandError
 from django.core.files.base import ContentFile
 from store.models import Category, Vendor, savePackageFile
 from store.utilities import parseAndValidatePackageMetadata
 
 
-
 class Command(BaseCommand):
     help = 'Uploads a package to the deployment server. This can be used for batch uploading.'
-    usage_string = 'Usage: manage.py store-upload-package --vendor <vendor> --category <category>' \
-                   ' [--description <short description>] <package>'
 
-    # FIXME: this doesn't work:
-    # see https://docs.djangoproject.com/en/1.8/howto/custom-management-commands/#django.core.management.BaseCommand.add_arguments
-    self.option_list = BaseCommand.option_list + (
-        make_option('--vendor',
-                    action='store',
-                    type="string",
-                    dest='vendor',
-                    help='Vendor name'),
-        make_option('--category',
-                    action='store',
-                    type="string",
-                    dest='category',
-                    help='Category name'),
-        make_option('--description',
-                    action='store',
-                    type="string",
-                    dest='description',
-                    default="Empty description",
-                    help='Short package description'),
-    )
+    def add_arguments(self, parser):
+        parser.add_argument('--vendor',
+                            action='store',
+                            type=str,
+                            dest='vendor',
+                            help='Vendor name')
+        parser.add_argument('--category',
+                            action='store',
+                            type=str,
+                            dest='category',
+                            help='Category name')
+        parser.add_argument('--description',
+                            action='store',
+                            type=str,
+                            dest='description',
+                            default="Empty description",
+                            help='Short package description')
+        parser.add_argument('package',
+                            metavar='package',
+                            type=argparse.FileType('rb'),
+                            nargs=1,
+                            help='package file to upload')
+
 
     def handle(self, *args, **options):
-        if len(args) != 1:
-            raise CommandError(self.usage_string)
-        if (not options['vendor']) or (not options['category']):
-            raise CommandError(self.usage_string)
         category = Category.objects.all().filter(name__exact=options['category'])
         vendor = Vendor.objects.all().filter(name__exact=options['vendor'])
         if not category:
@@ -77,8 +74,8 @@ class Command(BaseCommand):
             raise CommandError('Non-existing vendor specified')
 
         try:
-            self.stdout.write('Parsing package %s' % args[0])
-            packagefile = open(args[0], 'rb')
+            self.stdout.write('Parsing package %s' % options['package'][0].name)
+            packagefile = options['package'][0]
             pkgdata = parseAndValidatePackageMetadata(packagefile)
             self.stdout.write('  -> passed validation (internal name: %s)\n' % pkgdata['storeName'])
         except Exception as error:
@@ -95,3 +92,5 @@ class Command(BaseCommand):
             savePackageFile(pkgdata, ContentFile(packagefile.read()), package_metadata)
         except Exception as error:
             raise CommandError(error)
+        return 0
+

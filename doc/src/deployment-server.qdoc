@@ -108,7 +108,7 @@
     \section2 Set up the Server in a Virtual Environment
 
     Before you install the dependencies in the Python virtual environment, you must install the
-    \c{libffi-dev} package. Next, prepare the virtual environment:
+    \c{libffi-dev} and \c{python-pkg-resources} packages. Next, prepare the virtual environment:
 
     \code
         virtualenv -p python2.7 ./venv

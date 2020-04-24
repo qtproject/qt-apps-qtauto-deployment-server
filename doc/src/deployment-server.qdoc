@@ -29,7 +29,8 @@
 /*!
     \page qtauto-deployment-server-index.html
     \contentspage {Qt Automotive Suite}
-    \nextpage Qt Automotive Suite Deployment Server API Reference
+    \nextpage Qt Automotive Suite Deployment Server Installation
+    \startpage Qt Automotive Suite Deployment Server
 
     \title Qt Automotive Suite Deployment Server
 
@@ -104,103 +105,12 @@
     This command creates package and adds \c{platform} tag with \c{desktop} value to it.
     For reference see the \l{Packager} section of \l{Qt Application Manager} documentation.
 
-    \section1 Installation
-
-    \section2 Set up the Server in a Virtual Environment
-
-    Before you install the dependencies in the Python virtual environment, you must install the
-    \c{libffi-dev} and \c{python-pkg-resources} packages. Next, prepare the virtual environment:
-
-    \code
-        virtualenv -p python2.7 ./venv
-        ./venv/bin/pip install -r requirements.txt
-    \endcode
-
-    Make sure to adapt the \c{APPSTORE_*} settings in \c{appstore/settings.py} to your environment,
-    before you run the server.
-
-    One setting group to note is category icon resizing and decolorization settings. They are:
-    \c{ICON_SIZE_X}, \c{ICON_SIZE_Y} and \c{ICON_DECOLOR}. \c{ICON_DECOLOR} is False by default, and it
-    regulates stripping the category icon of color and alpha channel and the subsequent application
-    of the same image as an alpha channel instead.
-
-    \c{ICON_SIZE_X} and \c{ICON_SIZE_Y} are the maximum icon sizes, icons are scaled in such a way,
-    as not to exceed this size, while keeping the aspect ratio of the icon. Default values are 50x50,
-    so you should be aware that any uploaded icon will be limited to this size, unless the server is
-    reconfigured.
-
-    Since package downloads are done via temporary files, you need to setup a cron-job to remove
-    these temporary files periodically. The cron-job should be triggered every
-    \c{settings.APPSTORE_DOWNLOAD_EXPIRY/2} minutes; it needs to run:
-
-    \code
-      ./manage.py expire-downloads
-    \endcode
-
-    \section2 Activate the Python Virtual Environment
-
-    Before you run \c manage.py, source the activation script on the console where you will be using it.
-
-    \code
-      . ./venv/bin/activate
-    \endcode
-
-    This activation is done once per session only:
-
-
-    \section2 Prepare Your Databases on the Server
-
-    Before you run the server, first, you must prepare the databases. Also, you need to create an administrative user.
-
-    \code
-      ./manage.py makemigrations
-      ./manage.py migrate
-      ./manage.py createsuperuser
-    \endcode
-
-    Make sure that the server has a user added for Neptune 3 UI's Downloads App. Currently the username and
-    password are hardcoded in \c apps/com.pelagicore.downloads/stores/ServerConfig.qml:78.
-
-
-    \section2 Start the Server
-
-    To start the server, run the following command in your terminal:
-
-    \code
-      ./manage.py runserver 0.0.0.0:8080
-    \endcode
-
-    This command starts the server on port 8080, and is reachable by anyone. You can modify the
-    listening address to another address that suits your use case.
-
-    \section2 Maintain the Server
-
+    \section1 References and procedures
     \list
-    \li Clean up the downloads directory:
-    \code
-      ./manage.py expire-downloads
-    \endcode
-
-    This command removes all files from the downloads directory, that are older than
-    \c{settings.APPSTORE_DOWNLOAD_EXPIRY} minutes. Ideally, this command should be run via a cron-job.
-
-    \li Manually verify a package for upload:
-
-    \code
-      ./manage.py verify-upload-package <pkg.appkg>
-    \endcode
-
-    This command verifies if \c{<pkg.appkg>} is a valid package that can be uploaded to the Downloads
-    app.
-
-    \li Manually add a store signature to a package:
-
-    \code
-      ./manage.py store-sign-package <in.appkg> <out.appkg> [device id]
-    \endcode
-
-    This command first verifies the \c{<in.appkg>}. If this verification succeeds, \c{<in.appkg>}
-    is copied over to \c{<out.appkg>} and a store signature is added. The optional \c{[device id]}
-    parameter locks the generated package to the device with this ID.
+        \li \l{Qt Automotive Suite Deployment Server Installation}
+        \li \l{Qt Automotive Suite Deployment Server API Reference}
+        \li \l{Set up a Production server with Apache, Lighttpd or Nginx}
+        \li \l{Upload Packages to the Deployment Server}
     \endlist
+
 */

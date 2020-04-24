@@ -24,3 +24,4 @@ depends                       = qtautomotivesuite
 
 buildversion = "Qt Automotive Suite Deployment Server $QT_VERSION"
 navigation.homepage = "Qt Automotive Suite"
+navigation.landingpage = "Qt Automotive Suite Deployment Server"

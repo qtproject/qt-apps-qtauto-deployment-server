@@ -1,0 +1,136 @@
+/****************************************************************************
+**
+** Copyright (C) 2019 Luxoft Sweden AB
+** Copyright (C) 2018 Pelagicore AG
+** Contact: https://www.qt.io/licensing/
+**
+** This file is part of the documentation of the Qt Auto Deployment Server.
+**
+** $QT_BEGIN_LICENSE:FDL-QTAS$
+** Commercial License Usage
+** Licensees holding valid commercial Qt Automotive Suite licenses may use
+** this file in accordance with the commercial license agreement provided
+** with the Software or, alternatively, in accordance with the terms
+** contained in a written agreement between you and The Qt Company.  For
+** licensing terms and conditions see https://www.qt.io/terms-conditions.
+** For further information use the contact form at https://www.qt.io/contact-us.
+**
+** GNU Free Documentation License Usage
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of
+** this file. Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: https://www.gnu.org/licenses/fdl-1.3.html.
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+    \page qtauto-deployment-server-installation.html
+    \contentspage {Qt Automotive Suite Deployment Server}
+    \previouspage Qt Automotive Suite Deployment Server
+    \nextpage Qt Automotive Suite Deployment Server API Reference
+    \startpage Qt Automotive Suite Deployment Server
+
+    \title Qt Automotive Suite Deployment Server Installation
+
+    \section1 Set up the Server in a Virtual Environment
+
+    Before you install the dependencies in the Python virtual environment, you must install the
+    \c{libffi-dev}, \c{python-pkg-resources}, \c{python-dev} and \c{libssl-dev} packages. Next,
+    prepare the virtual environment:
+
+    \code
+        virtualenv -p python2.7 ./venv
+        ./venv/bin/pip install -r requirements.txt
+    \endcode
+
+    Make sure to adapt the \c{APPSTORE_*} settings in \c{appstore/settings.py} to your environment,
+    before you run the server.
+
+    One setting group to note is category icon resizing and decolorization settings. They are:
+    \c{ICON_SIZE_X}, \c{ICON_SIZE_Y} and \c{ICON_DECOLOR}. \c{ICON_DECOLOR} is False by default, and it
+    regulates stripping the category icon of color and alpha channel and the subsequent application
+    of the same image as an alpha channel instead.
+
+    \c{ICON_SIZE_X} and \c{ICON_SIZE_Y} are the maximum icon sizes, icons are scaled in such a way,
+    as not to exceed this size, while keeping the aspect ratio of the icon. Default values are 50x50,
+    so you should be aware that any uploaded icon will be limited to this size, unless the server is
+    reconfigured.
+
+    Since package downloads are done via temporary files, you need to setup a cron-job to remove
+    these temporary files periodically. The cron-job should be triggered every
+    \c{settings.APPSTORE_DOWNLOAD_EXPIRY/2} minutes; it needs to run:
+
+    \code
+      ./manage.py expire-downloads
+    \endcode
+
+    \section1 Activate the Python Virtual Environment
+
+    Before you run \c manage.py, source the activation script on the console where you will be using it.
+
+    \code
+      . ./venv/bin/activate
+    \endcode
+
+    This activation is done once per session only:
+
+
+    \section1 Prepare Your Databases on the Server
+
+    Before you run the server, first, you must prepare the databases. Also, you need to create an administrative user.
+
+    \code
+      ./manage.py makemigrations
+      ./manage.py migrate
+      ./manage.py createsuperuser
+    \endcode
+
+    Make sure that the server has a user added for Neptune 3 UI's Downloads App. Currently the username and
+    password are hardcoded in \c apps/com.pelagicore.downloads/stores/ServerConfig.qml:78.
+
+
+    \section1 Start the Server
+
+    To start the server, run the following command in your terminal:
+
+    \code
+      ./manage.py runserver 0.0.0.0:8080
+    \endcode
+
+    This command starts the server on port 8080, and is reachable by anyone. You can modify the
+    listening address to another address that suits your use case.
+
+    \section1 Maintain the Server
+
+    \list
+    \li Clean up the downloads directory:
+    \code
+      ./manage.py expire-downloads
+    \endcode
+
+    This command removes all files from the downloads directory, that are older than
+    \c{settings.APPSTORE_DOWNLOAD_EXPIRY} minutes. Ideally, this command should be run via a cron-job.
+
+    \li Manually verify a package for upload:
+
+    \code
+      ./manage.py verify-upload-package <pkg.appkg>
+    \endcode
+
+    This command verifies if \c{<pkg.appkg>} is a valid package that can be uploaded to the Downloads
+    app.
+
+    \li Manually add a store signature to a package:
+
+    \code
+      ./manage.py store-sign-package <in.appkg> <out.appkg> [device id]
+    \endcode
+
+    This command first verifies the \c{<in.appkg>}. If this verification succeeds, \c{<in.appkg>}
+    is copied over to \c{<out.appkg>} and a store signature is added. The optional \c{[device id]}
+    parameter locks the generated package to the device with this ID.
+    \endlist
+*/

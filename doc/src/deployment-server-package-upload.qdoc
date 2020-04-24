@@ -28,8 +28,10 @@
 
 /*!
     \page qtauto-deployment-server-package-upload.html
-    \previouspage Qt Automotive Suite Deployment Server
-    \contentspage {Qt Automotive Suite}
+    \previouspage Set up a Production server with Apache, Lighttpd or Nginx
+    \nextpage Qt Automotive Suite Deployment Server
+    \contentspage {Qt Automotive Suite Deployment Server}
+    \startpage Qt Automotive Suite Deployment Server
 
 
     \title Upload Packages to the Deployment Server

@@ -37,8 +37,8 @@
 
     \section1 Set up the Server in a Virtual Environment
 
-    Before you install the dependencies in the Python virtual environment, you must install the
-    \c{libffi-dev}, \c{python-pkg-resources}, \c{python-dev} and \c{libssl-dev} packages. Next,
+    Before you install the dependencies in the Python virtual environment, you need to install the
+    \c{libffi-dev}, \c{python-pkg-resources}, \c{python-dev} and \c{libssl-dev} packages. Then,
     prepare the virtual environment:
 
     \code
@@ -50,7 +50,7 @@
     before you run the server.
 
     One setting group to note is category icon resizing and decolorization settings. They are:
-    \c{ICON_SIZE_X}, \c{ICON_SIZE_Y} and \c{ICON_DECOLOR}. \c{ICON_DECOLOR} is False by default, and it
+    \c{ICON_SIZE_X}, \c{ICON_SIZE_Y}, and \c{ICON_DECOLOR}. \c{ICON_DECOLOR} is False by default, and it
     regulates stripping the category icon of color and alpha channel and the subsequent application
     of the same image as an alpha channel instead.
 
@@ -59,7 +59,7 @@
     so you should be aware that any uploaded icon will be limited to this size, unless the server is
     reconfigured.
 
-    Since package downloads are done via temporary files, you need to setup a cron-job to remove
+    Since package downloads are done through temporary files, you need to setup a cron-job to remove
     these temporary files periodically. The cron-job should be triggered every
     \c{settings.APPSTORE_DOWNLOAD_EXPIRY/2} minutes; it needs to run:
 
@@ -80,7 +80,7 @@
 
     \section1 Prepare Your Databases on the Server
 
-    Before you run the server, first, you must prepare the databases. Also, you need to create an administrative user.
+    Before you run the server, first, you need to prepare the databases. Also, you need to create an administrative user.
 
     \code
       ./manage.py makemigrations
@@ -100,8 +100,8 @@
       ./manage.py runserver 0.0.0.0:8080
     \endcode
 
-    This command starts the server on port 8080, and is reachable by anyone. You can modify the
-    listening address to another address that suits your use case.
+    This command starts the server on port 8080, and is reachable by anyone. You can replace the
+    listening address with another one that suits your use case.
 
     \section1 Maintain the Server
 

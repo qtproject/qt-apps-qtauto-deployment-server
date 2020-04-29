@@ -41,21 +41,21 @@
     that are available for installation by a Qt Application Manager instance, running on a target
     device connected to a network. The UI counterpart for the Deployment Server is the Downloads app
     in the Neptune 3 UI. Together, the Deployment Server and the Downloads app enable you to install
-    different apps that are available in the server via network.
+    different apps available on the server through network.
 
     The key scenario for these components is to install apps during the integration testing
     process. Additionally, the code can also be used as a reference implementation for a
     fully-featured server, and a new Downloads app on the target device for production.
 
-    The Deployment Server works with the Application Installer in the Qt Application Manager and
+    The Deployment Server works with the Application Installer in \l{Qt Application Manager} and
     acts as an installation source for \c{http://} and \c{https://} schemes. In addition to
     application packages, the Deployment Server also hosts meta information about each package,
-    that is used by the Downloads app to visualize the choices available for the user to select.
+    that is used by Downloads app to visualize the choices available for a user to select.
     This meta information is stored in the form of tags and other information in the package
     header, according to the Qt Application Manager’s package format. When a package is uploaded
-    to the server, the package header is parsed, associated with that package, and then sent to a
-    Downloads app, that queries for a list of available apps. Using this information, a Downloads
-    app can inform users about apps that are available and even hide those that are not compatible
+    to the server, the package header is parsed, associated with that package, and then sent to the
+    Downloads app, that queries for a list of available apps. Using this information, the Downloads
+    app can inform users about the available apps and even hide those that are not compatible
     with the target installation. The figure below illustrates this installation scenario.
 
     \image deployment-server-installation-handshake.png "Install an App via the Deployment Server"

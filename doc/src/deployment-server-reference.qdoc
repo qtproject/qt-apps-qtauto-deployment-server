@@ -103,7 +103,7 @@
 
     \section2 login
 
-    Logs onto the deployment server with the given username and password.
+    Logs onto the Deployment Server with the given username and password.
     Either an IMEI or a unique hardware identifier, such as a MAC address,
     must be provided. This call is necessary to be able to download apps.
     \table
@@ -141,7 +141,7 @@
     \endtable
 
     \section2 logout
-    Logs out the currently logged-in user from the deployment server.
+    Logs out the currently logged-in user from the Deployment Server.
 
     Returns a JSON object with the following fields and values.
     \table
@@ -286,7 +286,7 @@
          \row
              \li failed
              \li
-             \li An error has occurred, dheck the error field for more information.
+             \li An error has occurred, check the error field for more information.
          \row
              \li error
              \li Text.

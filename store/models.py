@@ -75,7 +75,7 @@ class Category(OrderedModel):
         super(Category, self).save(*args, **kwargs)
 
 class Vendor(models.Model):
-    user = models.ForeignKey(User, primary_key = True)
+    user = models.ForeignKey(User, primary_key = False)
     name = models.CharField(max_length = 200)
     certificate = models.TextField(max_length = 8000)
 

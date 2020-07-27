@@ -134,7 +134,8 @@ def getOsArch(str):
 def normalizeArch(inputArch):
     """
         This function brings requested architecture to common form (currently just parses the bits part and turns it into 32/64)
-        Input string format is: arch-endianness-word_size-kernelType
+        Input string format is: arch-endianness-word_size-optional_ABI-kernelType
+        Output string format is: arch-endianness-word_size-kernelType
 
     """
     parts = inputArch.split('-')
@@ -143,15 +144,16 @@ def normalizeArch(inputArch):
     #Drop anything non-numeric from word_size field
     parts[2]=re.sub(r"\D", "", parts[2])
     #Transform kernelType into binary format
-    temp = parts[3]
-    if "win" in temp:
-        parts[3]="pe32"
+    temp = parts[-1] #the last element is kernel type
+    if "darwin" in temp:
+        parts[3]="mach_o"
     elif "linux" in  temp:
         parts[3]="elf"
     elif "freebsd" in temp: #How do we treat QNX?
         parts[3]="elf"
-    elif "darwin" in temp:
-        parts[3]="mach_o"
+    elif "win" in temp:
+        parts[3]="pe32"
+    parts=parts[0:4] # now format drops optional part
     #Rejoin new architecture
     arch = '-'.join(parts)
     return arch

@@ -68,7 +68,8 @@
         these groups are unique.
         \li Architecture is specified as a group of: CPU architecture, endianness, bitness, and OS.
         If a package does not contain architecture specific parts, the architecture is specified as \e{All}.
-        \li CPU architecture is based on the return value from QsysInfo::buildCpuArchitecture().
+        \li CPU architecture is based on the return value from QsysInfo::buildAbi() and
+        QSysInfo::kernelType(), joined with '-'.
         \li The installation target is automatically determined by parsing binary files. For example,
         detecting an ELF binary means that it's a Linux package; the CPU architecture, such as armv8,
         further defines the installation target.

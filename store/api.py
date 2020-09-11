@@ -178,6 +178,8 @@ def upload(request):
 
     except Exception as error:
         status = str(error)
+    except BaseException as error:
+        status = str(error)
     return JsonResponse({'status': status})
 
 

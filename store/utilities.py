@@ -413,6 +413,11 @@ def parseAndValidatePackageMetadata(packageFile, certificates = []):
     if not name:
         raise Exception('could not deduce a suitable package name from the info part')
 
+    try:
+        _, _, _ = makeTagList(pkgdata)
+    except BaseException as error:
+        raise Exception(str(error))
+
     pkgdata['storeName'] = name
 
     if pkgdata['digest'] != pkgdata['footer']['digest']:

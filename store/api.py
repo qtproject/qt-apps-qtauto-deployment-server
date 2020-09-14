@@ -39,39 +39,57 @@ from django.db.models import Q, Count
 from django.http import HttpResponse, HttpResponseForbidden, Http404, JsonResponse
 from django.contrib import auth
 from django.views.decorators.csrf import csrf_exempt
-from authdecorators import logged_in_or_basicauth, is_staff_member
+from django.core.exceptions import ValidationError
+from store.authdecorators import logged_in_or_basicauth, is_staff_member
 
-from models import App, Category, Vendor, savePackageFile
-from utilities import parsePackageMetadata, parseAndValidatePackageMetadata, addSignatureToPackage
-from utilities import packagePath, iconPath, downloadPath
-from utilities import getRequestDictionary
-from osandarch import normalizeArch
-from tags import SoftwareTagList
+from store.models import App, Category, Vendor, savePackageFile
+from store.utilities import parsePackageMetadata, parseAndValidatePackageMetadata, \
+    addSignatureToPackage
+from store.utilities import packagePath, iconPath, downloadPath
+from store.utilities import getRequestDictionary
+from store.osandarch import normalizeArch
+from store.tags import SoftwareTagList
 
 
 def hello(request):
     status = 'ok'
+    dictionary = getRequestDictionary(request)
+    try:
+        version = int(dictionary.get("version", "-1"))
+        if version > 256: #Sanity check against DoS attack (memory exhaustion)
+            version = -1
+    except:
+        version = -1
+
     if settings.APPSTORE_MAINTENANCE:
         status = 'maintenance'
-    elif getRequestDictionary(request).get("platform", "") != str(settings.APPSTORE_PLATFORM_ID):
+    elif dictionary.get("platform", "") != str(settings.APPSTORE_PLATFORM_ID):
         status = 'incompatible-platform'
-    elif getRequestDictionary(request).get("version", "") != str(settings.APPSTORE_PLATFORM_VERSION):
+    elif not ((version) > 0 and (version <= settings.APPSTORE_PLATFORM_VERSION)):
         status = 'incompatible-version'
 
-    for j in ("require_tag", "conflicts_tag",):
-        if j in getRequestDictionary(request): #Tags are coma-separated,
-            versionmap = SoftwareTagList()
-            if not versionmap.parse(getRequestDictionary(request)[j]):
-                status = 'malformed-tag'
-                break
-            request.session[j] = str(versionmap)
-    if 'architecture' in getRequestDictionary(request):
-        arch = normalizeArch(getRequestDictionary(request)['architecture'])
+    # Tag parsing
+    temp_tags = []
+    for j in ("require_tag", "tag"):
+        if j in dictionary:
+            temp_tags.append(dictionary[j])
+    versionmap = SoftwareTagList()
+    #Tags are coma-separated, - so join them
+    if temp_tags:
+        if not versionmap.parse(','.join(temp_tags)):
+            status = 'malformed-tag'
+    request.session["tag"] = str(versionmap)
+    del temp_tags
+
+    if 'architecture' in dictionary:
+        arch = normalizeArch(dictionary['architecture'])
         if arch == "":
             status = 'incompatible-architecture'
         request.session['architecture'] = arch
     else:
         request.session['architecture'] = ''
+
+    request.session['pkgversions'] = range(1, version + 1)
     return JsonResponse({'status': status})
 
 
@@ -84,7 +102,7 @@ def login(request):
         except KeyError:
             raise Exception('missing-credentials')
 
-        user = auth.authenticate(username = username, password = password)
+        user = auth.authenticate(username=username, password=password)
         if user is None:
             raise Exception('authentication-failed')
 
@@ -136,9 +154,9 @@ def upload(request):
             myfile = request.FILES['package']
             category = Category.objects.all().filter(name__exact=category_name)
             vendor = Vendor.objects.all().filter(name__exact=vendor_name)
-            if len(category) == 0:
+            if not category:
                 raise Exception('Non-existing category')
-            if len(vendor) == 0:
+            if not vendor:
                 raise Exception('Non-existing vendor')
 
             try:
@@ -148,7 +166,11 @@ def upload(request):
 
             myfile.seek(0)
             try:
-                savePackageFile(pkgdata, myfile, category[0], vendor[0], description, shortdescription)
+                package_metadata = {'category':category[0],
+                                    'vendor':vendor[0],
+                                    'description':description,
+                                    'short_description':shortdescription}
+                savePackageFile(pkgdata, myfile, package_metadata)
             except Exception as error:
                 raise Exception(error)
         else:
@@ -156,83 +178,119 @@ def upload(request):
 
     except Exception as error:
         status = str(error)
+    except BaseException as error:
+        status = str(error)
     return JsonResponse({'status': status})
 
 
 def appList(request):
     apps = App.objects.all()
-    if 'filter' in getRequestDictionary(request):
-        apps = apps.filter(name__contains = getRequestDictionary(request)['filter'])
-    if 'category_id' in getRequestDictionary(request):
-        catId = getRequestDictionary(request)['category_id']
+    dictionary = getRequestDictionary(request)
+    if 'filter' in dictionary:
+        apps = apps.filter(name__contains=dictionary['filter'])
+    if 'category_id' in dictionary:
+        catId = dictionary['category_id']
         if catId != -1: # All metacategory
-            apps = apps.filter(category__exact = catId)
-
-    #Tag filtering
-    #"require_tag", "conflicts_tag"
-    # Tags are combined by logical AND (for require) and logical OR for conflicts
-    if 'require_tag' in request.session:
-        require_tags = SoftwareTagList()
-        require_tags.parse(request.session['require_tag'])
-        for i in require_tags.make_regex():
-            apps = apps.filter(Q(tags__regex = i))
-    if 'conflicts_tag' in request.session:
-        conflict_tags = SoftwareTagList()
-        conflict_tags.parse(request.session['conflicts_tag'])
-        for i in conflict_tags.make_regex():
-            apps = apps.filter(~Q(tags__regex=i))
+            apps = apps.filter(category__exact=catId)
 
     # Here goes the logic of listing packages when multiple architectures are available
-    # in /hello request, the target architecture is stored in the session. By definition target machine can support
-    # both "All" package architecture and it's native one.
+    # in /hello request, the target architecture is stored in the session. By definition
+    # target machine can support both "All" package architecture and it's native one.
     # So - here goes filtering by list of architectures
     archlist = ['All', ]
     if 'architecture' in request.session:
         archlist.append(request.session['architecture'])
-    apps = apps.filter(architecture__in = archlist)
 
-    # After filtering, there are potential duplicates in list. And we should prefer native applications to pure qml ones
-    # due to speedups offered.
-    # So - first applications are grouped by appid and numbers of same appids counted. In case where is more than one appid -
-    # there are two variants of application: for 'All' architecture, and for the architecture supported by the target machine.
-    # So, as native apps should be preferred
-    duplicates = (
-        apps.values('appid').order_by().annotate(count_id=Count('id')).filter(count_id__gt=1)
-    )
-    # Here we go over duplicates list and filter out 'All' architecture apps.
-    for duplicate in duplicates:
-        apps = apps.filter(~Q(appid__exact = duplicate['appid'], architecture__exact = 'All')) # if there is native - 'All' architecture apps are excluded
+    versionlist = [1]
+    if 'pkgversions' in request.session:
+        versionlist = request.session['pkgversions']
 
-    appList = list(apps.values('appid', 'name', 'vendor__name', 'briefDescription', 'category', 'tags', 'architecture', 'version').order_by('appid','architecture'))
+    apps = apps.filter(architecture__in=archlist)
+    apps = apps.filter(pkgformat__in=versionlist)
 
-    for app in appList:
+    #Tag filtering
+    #There is no search by version distance yet - this must be fixed
+    if 'tag' in request.session:
+        tags = SoftwareTagList()
+        tags.parse(request.session['tag'])
+        apps_ids = [app.id for app in apps if app.is_tagmatching(tags.list())]
+        apps = App.objects.filter(id__in=apps_ids)
+
+    # After filtering, there are potential duplicates in list. And we should prefer native
+    # applications to pure qml ones due to speedups offered.
+    # At this point - filtering duplicates is disabled, because it will be implemented with
+    # 'distance' between requested version and package version. Architecture will be also included
+    # in this metric (as native apps should be preferred)
+
+    selectedAppList = apps.values('id', 'appid', 'name', 'vendor__name', 'briefDescription',
+                                       'category', 'architecture',
+                                       'version', 'pkgformat', 'tags_hash').order_by('appid', 'architecture', 'tags_hash')
+
+    appList = []
+    for app in selectedAppList:
+        app['purchaseId'] = app['id']
         app['id'] = app['appid']
         app['category_id'] = app['category']
-        app['category'] = Category.objects.all().filter(id__exact = app['category_id'])[0].name
+        app['category'] = Category.objects.all().filter(id__exact=app['category_id'])[0].name
         app['vendor'] = app['vendor__name']
-        if app['tags'] != "":
-            app['tags'] = app['tags'].split(',')
+        app['tags'] = []
+        tags = list(App.objects.filter(appid=app['appid'], architecture=app['architecture'], tags_hash=app['tags_hash'], tags__negative=False).values('tags__name', 'tags__version'))
+        for i in tags:
+            app['tags'].append(i['tags__name'] if not i['tags__version'] else ':'.join((i['tags__name'],i['tags__version'])))
+        app['conflict_tags'] = []
+        conflict_tags = list(App.objects.filter(appid=app['appid'], architecture=app['architecture'], tags_hash=app['tags_hash'], tags__negative=True).values('tags__name', 'tags__version'))
+        for i in conflict_tags:
+            app['conflict_tags'].append(i['tags__name'] if not i['tags__version'] else ':'.join((i['tags__name'],i['tags__version'])))
+
+        toFile = '_'.join([app['appid'], app['architecture'], app['tags_hash']])
+        if settings.URL_PREFIX != '':
+            iconUri = '/' + settings.URL_PREFIX + '/app/icons/' + toFile
         else:
-            app['tags'] = []
+            iconUri = '/app/icons/' + toFile
+        app['iconUrl'] = request.build_absolute_uri(iconUri)
         del app['vendor__name']
         del app['appid']
+        del app['tags_hash']
+        appList.append(app)
 
     # this is not valid JSON, since we are returning a list!
-    return JsonResponse(appList, safe = False)
+    return JsonResponse(appList, safe=False)
 
 
 def appDescription(request):
     archlist = ['All', ]
     if 'architecture' in request.session:
         archlist.append(request.session['architecture'])
+    versionlist = [1]
+    if 'pkgversions' in request.session:
+        versionlist = request.session['pkgversions']
     appId = getRequestDictionary(request)['id']
     try:
-        app = App.objects.get(appid__exact = appId, architecture__in = archlist).order_by('architecture')
+        app = App.objects.filter(appid__exact = appId, architecture__in = archlist).order_by('architecture','tags_hash')
+        app = app.filter(pkgformat__in=versionlist)
+        #Tag filtering
+        #There is no search by version distance yet - this must be fixed
+        if 'tag' in request.session:
+            tags = SoftwareTagList()
+            tags.parse(request.session['tag'])
+            app_ids = [x.id for x in app if x.is_tagmatching(tags.list())]
+            app = App.objects.filter(id__in=app_ids)
         app = app.last()
         return HttpResponse(app.description)
     except:
         raise Http404('no such application: %s' % appId)
 
+
+def appIconNew(request, path):
+    path=path.replace('/', '_').replace('\\', '_').replace(':', 'x3A').replace(',', 'x2C') + '.png'
+    try:
+        response = HttpResponse(content_type='image/png')
+        with open(iconPath() + path, 'rb') as pkg:
+            response.write(pkg.read())
+            response['Content-Length'] = pkg.tell()
+        return response
+    except:
+        raise Http404
 
 def appIcon(request):
     archlist = ['All', ]
@@ -241,12 +299,23 @@ def appIcon(request):
         archlist.append(normalizeArch(dictionary['architecture']))
     elif 'architecture' in request.session:
         archlist.append(request.session['architecture'])
+    versionlist = [1]
+    if 'pkgversions' in request.session:
+        versionlist = request.session['pkgversions']
     appId = dictionary['id']
     try:
-        app = App.objects.filter(appid__exact = appId, architecture__in = archlist).order_by('architecture')
+        app = App.objects.filter(appid__exact = appId, architecture__in = archlist).order_by('architecture','tags_hash')
+        app = app.filter(pkgformat__in=versionlist)
+        #Tag filtering
+        #There is no search by version distance yet - this must be fixed
+        if 'tag' in request.session:
+            tags = SoftwareTagList()
+            tags.parse(request.session['tag'])
+            app_ids = [x.id for x in app if x.is_tagmatching(tags.list())]
+            app = App.objects.filter(id__in=app_ids)
         app = app.last()
-        with open(iconPath(app.appid,app.architecture,app.tags), 'rb') as iconPng:
-            response = HttpResponse(content_type = 'image/png')
+        with open(iconPath(app.appid, app.architecture, app.tags_hash), 'rb') as iconPng:
+            response = HttpResponse(content_type='image/png')
             response.write(iconPng.read())
             return response
     except:
@@ -259,6 +328,10 @@ def appPurchase(request):
     archlist = ['All', ]
     if 'architecture' in request.session:
         archlist.append(request.session['architecture'])
+    versionlist = [1]
+    if 'pkgversions' in request.session:
+        versionlist = request.session['pkgversions']
+
     try:
         deviceId = str(getRequestDictionary(request).get("device_id", ""))
         if settings.APPSTORE_BIND_TO_DEVICE_ID:
@@ -267,13 +340,28 @@ def appPurchase(request):
         else:
             deviceId = ''
 
-        app = App.objects.filter(appid__exact = getRequestDictionary(request)['id'], architecture__in=archlist).order_by('architecture')
+        if 'id' in getRequestDictionary(request):
+            app = App.objects.filter(appid__exact = getRequestDictionary(request)['id'], architecture__in=archlist).order_by('architecture','tags_hash')
+        elif 'purchaseId' in getRequestDictionary(request):
+            app = App.objects.filter(id__exact = getRequestDictionary(request)['purchaseId'], architecture__in=archlist).order_by('architecture','tags_hash')
+        else:
+            raise ValidationError('id or purchaseId parameter required')
+        app = app.filter(pkgformat__in=versionlist)
+        #Tag filtering
+        #There is no search by version distance yet - this must be fixed
+        if 'tag' in request.session:
+            tags = SoftwareTagList()
+            tags.parse(request.session['tag'])
+            app_ids = [x.id for x in app if x.is_tagmatching(tags.list())]
+            app = App.objects.filter(id__in=app_ids)
+
         app = app.last()
-        fromFilePath = packagePath(app.appid, app.architecture, app.tags)
+        fromFilePath = packagePath(app.appid, app.architecture, app.tags_hash)
 
         # we should not use obvious names here, but just hash the string.
         # this would be a nightmare to debug though and this is a development server :)
-        toFile = str(app.appid) + '_' + str(request.user.id) + '_' + str(app.architecture) + '_' + str(app.tags) + '_'+ str(deviceId)
+        toFile = '_'.join((str(app.appid), str(request.user.id), str(app.architecture),
+                           str(app.tags_hash), str(deviceId)))
         if not settings.DEBUG:
             toFile = hashlib.sha256(toFile).hexdigest()
         toFile += '.appkg'
@@ -284,13 +372,14 @@ def appPurchase(request):
         if not settings.APPSTORE_NO_SECURITY:
             with open(fromFilePath, 'rb') as package:
                 pkgdata = parsePackageMetadata(package)
-                addSignatureToPackage(fromFilePath, toPath + toFile, pkgdata['rawDigest'], deviceId)
+                addSignatureToPackage(fromFilePath, toPath + toFile, pkgdata['rawDigest'], deviceId,
+                                      pkgdata['packageFormat']['formatVersion'])
         else:
             try:
                 shutil.copyfile(fromFilePath, toPath + toFile)
             except Exception as error:
                 if type(error) == IOError:
-                    raise IOError(error.args[0],error.args[1], os.path.basename(fromFilePath))
+                    raise IOError(error.args[0], error.args[1], os.path.basename(fromFilePath))
                 else:
                     raise error
 
@@ -311,7 +400,7 @@ def appPurchase(request):
 
 def appDownload(request, path):
     try:
-        response = HttpResponse(content_type = 'application/octetstream')
+        response = HttpResponse(content_type='application/octetstream')
         with open(downloadPath() + path, 'rb') as pkg:
             response.write(pkg.read())
             response['Content-Length'] = pkg.tell()

@@ -30,53 +30,52 @@
 ##
 #############################################################################
 
-import os
+import argparse
 
 from django.core.management.base import BaseCommand, CommandError
 from django.core.files.base import ContentFile
-from store.models import App, Category, Vendor, savePackageFile
+from store.models import Category, Vendor, savePackageFile
 from store.utilities import parseAndValidatePackageMetadata
-from optparse import make_option
 
 
 class Command(BaseCommand):
     help = 'Uploads a package to the deployment server. This can be used for batch uploading.'
-    option_list = BaseCommand.option_list + (
-        make_option('--vendor',
-                    action='store',
-                    type="string",
-                    dest='vendor',
-                    help='Vendor name'),
-        make_option('--category',
-                    action='store',
-                    type="string",
-                    dest='category',
-                    help='Category name'),
-        make_option('--description',
-                    action='store',
-                    type="string",
-                    dest='description',
-                    default="Empty description",
-                    help='Short package description'),
-    )
+
+    def add_arguments(self, parser):
+        parser.add_argument('--vendor',
+                            action='store',
+                            type=str,
+                            dest='vendor',
+                            help='Vendor name')
+        parser.add_argument('--category',
+                            action='store',
+                            type=str,
+                            dest='category',
+                            help='Category name')
+        parser.add_argument('--description',
+                            action='store',
+                            type=str,
+                            dest='description',
+                            default="Empty description",
+                            help='Short package description')
+        parser.add_argument('package',
+                            metavar='package',
+                            type=argparse.FileType('rb'),
+                            nargs=1,
+                            help='package file to upload')
+
 
     def handle(self, *args, **options):
-        if len(args) != 1:
-            raise CommandError(
-                'Usage: manage.py store-upload-package --vendor <vendor> --category <category> [--description <short description>] <package>')
-        if (not options['vendor']) or (not options['category']):
-            raise CommandError(
-                'Usage: manage.py store-upload-package --vendor <vendor> --category <category> [--description <short description>] <package>')
         category = Category.objects.all().filter(name__exact=options['category'])
         vendor = Vendor.objects.all().filter(name__exact=options['vendor'])
-        if len(category) == 0:
+        if not category:
             raise CommandError('Non-existing category specified')
-        if len(vendor) == 0:
+        if not vendor:
             raise CommandError('Non-existing vendor specified')
 
         try:
-            self.stdout.write('Parsing package %s' % args[0])
-            packagefile = open(args[0], 'rb')
+            self.stdout.write('Parsing package %s' % options['package'][0].name)
+            packagefile = options['package'][0]
             pkgdata = parseAndValidatePackageMetadata(packagefile)
             self.stdout.write('  -> passed validation (internal name: %s)\n' % pkgdata['storeName'])
         except Exception as error:
@@ -86,7 +85,12 @@ class Command(BaseCommand):
         packagefile.seek(0)
         description = options['description']
         try:
-            savePackageFile(pkgdata, ContentFile(packagefile.read()), category[0], vendor[0], description, description)
+            package_metadata = {'category': category[0],
+                                'vendor': vendor[0],
+                                'description': description,
+                                'short_description': description}
+            savePackageFile(pkgdata, ContentFile(packagefile.read()), package_metadata)
         except Exception as error:
             raise CommandError(error)
+        return 0
 

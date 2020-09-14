@@ -39,19 +39,21 @@ https://docs.djangoproject.com/en/1.7/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.7/ref/settings/
 """
+import os
 
 APPSTORE_MAINTENANCE = False
 APPSTORE_PLATFORM_ID = 'NEPTUNE3'
-APPSTORE_PLATFORM_VERSION = 1
+APPSTORE_PLATFORM_VERSION = 2     # Maximum supported platform version:
+                                  # version 1 - only old package format
+                                  # version 2 - old and new package formats
 APPSTORE_DOWNLOAD_EXPIRY = 10     # in minutes
 APPSTORE_BIND_TO_DEVICE_ID = True # unique downloads for each device
 APPSTORE_NO_SECURITY = True       # ignore developer signatures and do not generate store signatures
 APPSTORE_STORE_SIGN_PKCS12_CERTIFICATE = 'certificates/store.p12'
 APPSTORE_STORE_SIGN_PKCS12_PASSWORD = 'password'
-APPSTORE_DEV_VERIFY_CA_CERTIFICATES = [ 'certificates/ca.crt', 'certificates/devca.crt' ]
+APPSTORE_DEV_VERIFY_CA_CERTIFICATES = ['certificates/ca.crt', 'certificates/devca.crt']
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-import os
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 
@@ -157,8 +159,8 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 MEDIA_URL = ''
 
 # Icon size (icons are resized to this size on upload)
-ICON_SIZE_X = 36
-ICON_SIZE_Y = 32
+ICON_SIZE_X = 50
+ICON_SIZE_Y = 50
 # If the icon should be transformed to monochrome, with alpha channel, when uploaded or not
-ICON_DECOLOR = True
+ICON_DECOLOR = False
 

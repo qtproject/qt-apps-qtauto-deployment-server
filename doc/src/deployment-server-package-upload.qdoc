@@ -1,0 +1,105 @@
+/****************************************************************************
+**
+** Copyright (C) 2020 Luxoft Sweden AB
+** Copyright (C) 2018 Pelagicore AG
+** Contact: https://www.qt.io/licensing/
+**
+** This file is part of the documentation of the Qt Auto Deployment Server.
+**
+** $QT_BEGIN_LICENSE:FDL-QTAS$
+** Commercial License Usage
+** Licensees holding valid commercial Qt Automotive Suite licenses may use
+** this file in accordance with the commercial license agreement provided
+** with the Software or, alternatively, in accordance with the terms
+** contained in a written agreement between you and The Qt Company.  For
+** licensing terms and conditions see https://www.qt.io/terms-conditions.
+** For further information use the contact form at https://www.qt.io/contact-us.
+**
+** GNU Free Documentation License Usage
+** Alternatively, this file may be used under the terms of the GNU Free
+** Documentation License version 1.3 as published by the Free Software
+** Foundation and appearing in the file included in the packaging of
+** this file. Please review the following information to ensure
+** the GNU Free Documentation License version 1.3 requirements
+** will be met: https://www.gnu.org/licenses/fdl-1.3.html.
+** $QT_END_LICENSE$
+**
+****************************************************************************/
+
+/*!
+    \page qtauto-deployment-server-package-upload.html
+    \previouspage Set up a Production server with Apache, Lighttpd or Nginx
+    \nextpage Qt Automotive Suite Deployment Server
+    \contentspage {Qt Automotive Suite Deployment Server}
+    \startpage Qt Automotive Suite Deployment Server
+
+
+    \title Upload Packages to the Deployment Server
+
+Currently there are three possible ways to upload packages to the Deployment Server: using admin page
+in web interface, using command line tool on the host where the server runs, and using REST API of the
+server itself.
+
+\section1 Through Server Admin Page
+
+This was the first uploading method implemented. It uses django admin page, accessible by \c{/admin/} URL of
+the Deployment Server. For Qt 5.14, the URL is \l{http://demoappsdeploy.qt.io:8514/admin/}.
+
+To add application:
+\list
+  \li Navigate to the URL specified above
+  \li Login there as a user with administrative rights
+  \li Go to Apps section of the Store
+  \li Press \uicontrol{Add app} button.
+\endlist
+
+At this point, there will be form to add an application, containing the following fields: file, vendor, category,
+brief description, and description.
+
+\table
+  \header
+    \li Field
+    \li Field description
+  \row
+    \li File
+    \li Where the package file for upload is specified.
+  \row
+    \li Vendor
+    \li The package vendor. When package signing is enabled, vendor's certificate is used
+    to add package signature. When package signing is disabled, it is still required, but has no
+    real effect.
+  \row
+    \li Category
+    \li Category, in which a package will be shown on the deployment server. Currently it is
+    possible to select only one category, even if specification allows multiple categories to be
+    specified in a package file metadata.
+  \row
+    \li Description
+    \li {1,2} BriefDescription and Description fields are self-explanatory (and they will be
+    returned as-is in the related API requests).
+  \row
+    \li BriefDescription
+\endtable
+
+After filling in the fields and pressing \uicontrol{save} button, the package will be added to the
+deployment server or error message will be reported.
+
+
+\section1 Through API
+
+It requires making POST request to \c{/upload} URL. Parameters are described on
+\l{Qt Automotive Suite Deployment Server API Reference} page.
+
+\section1 Through Command Line Tool
+
+If it is possible to access the command line of the Deployment Server, this is preferable way to
+upload packages. The tool is a \c{store-upload-package} implemented as a part of \c{manage.py}
+django main program. The tool can be run with the following command line:
+\code
+manage.py store-upload-package --vendor <vendor> --category <category> [--description <short description>] <package>
+\endcode
+Vendor and category are specified as their name, not an ID in django database. Description and brief
+description are filled with the same value by this tool.
+
+
+*/

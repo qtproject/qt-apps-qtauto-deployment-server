@@ -30,8 +30,6 @@
 ##
 #############################################################################
 
-import sys
-
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 
@@ -55,7 +53,8 @@ class Command(BaseCommand):
             self.stdout.write('  -> passed validation (internal name: %s)\n' % pkgdata['storeName'])
 
             self.stdout.write('Adding signature to package %s' % destinationPackage)
-            addSignatureToPackage(sourcePackage, destinationPackage, pkgdata['rawDigest'], deviceId)
+            addSignatureToPackage(sourcePackage, destinationPackage, pkgdata['rawDigest'],
+                                  deviceId, pkgdata['packageFormat']['formatVersion'])
             self.stdout.write('  -> finished')
 
         except Exception as error:

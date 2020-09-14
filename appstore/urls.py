@@ -33,7 +33,7 @@
 from django.conf.urls import include, url
 from django.contrib import admin
 from store import api as store_api
-import settings
+from appstore.settings import URL_PREFIX
 
 base_urlpatterns = [
     url(r'^admin/', include(admin.site.urls)),
@@ -42,6 +42,7 @@ base_urlpatterns = [
     url(r'^login$',             store_api.login),
     url(r'^logout$',            store_api.logout),
     url(r'^app/list$',          store_api.appList),
+    url(r'^app/icons/(.*)$',    store_api.appIconNew),
     url(r'^app/icon',           store_api.appIcon),
     url(r'^app/description',    store_api.appDescription),
     url(r'^app/purchase',       store_api.appPurchase),
@@ -53,8 +54,8 @@ base_urlpatterns = [
 
 
 prefix = '^'
-if settings.URL_PREFIX !='':
-    prefix = prefix + settings.URL_PREFIX + '/'
+if URL_PREFIX != '':
+    prefix = prefix + URL_PREFIX + '/'
 
 urlpatterns = [
     url(prefix, include(base_urlpatterns)),

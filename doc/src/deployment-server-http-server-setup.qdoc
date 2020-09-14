@@ -28,8 +28,10 @@
 
 /*!
     \page qtauto-deployment-server-http-server-setup.html
-    \previouspage Qt Automotive Suite Deployment Server
-    \contentspage Qt Automotive Suite
+    \previouspage Qt Automotive Suite Deployment Server API Reference
+    \nextpage Upload Packages to the Deployment Server
+    \contentspage {Qt Automotive Suite Deployment Server}
+    \startpage Qt Automotive Suite Deployment Server
 
 
     \title Set up a Production server with Apache, Lighttpd or Nginx
@@ -38,8 +40,8 @@ The Deployment Server can be set up in combination with a regular web server: Ap
  Nginx. This web server can be used to reduce the number of open ports or to add a layer of SSL
  encryption.
 
-In the Django version that is used for the deployment server, there are two possible setups for
- running with another web server:
+There are two possible setups for running with another web server in the Django version used for
+the Deployment Server:
 \list
   \li reverse proxy setup - which we describe here
   \li WSGI setup - for brevity, this setup is left out of scope, as it is similar in functionality
@@ -106,7 +108,7 @@ $HTTP["url"] =~ "^/<url_prefix>/" {
 \endcode
 
 Where \e{<url_prefix>} is the same as in \e{settings.py} file, and \e{<port>} is the port on which the
-deployment server instance is running.
+Deployment Server instance is running.
 
 Finally, reload the Lighttpd server's configuration.
 
@@ -123,7 +125,21 @@ The code that needs to be added is:
 \endcode
 
 Where \e{<url_prefix>} is the same as in \e{settings.py} file, and \e{<port>} is the port on which the
-deployment server instance is running.
+Deployment Server instance is running.
+
+\section1 Serving Static Files Outside of Django App
+
+It is possible to speed up working of the admin pages of the Deployment Server by serving static files
+separately. In order to achieve that, web server should be configured to serve \e{static/} subdirectory of
+the Deployment Server installation as \e{static/} subdirectory of the instance. (If the Deployment Server is
+hosted as \e{http://deployment.server.name/}, then \e{static/} directory in the sources should be redirected
+to \e{http://deployment.server.name/static/}, while bypassing the django app.)
+
+After configuring that, static files collection should be performed using the following command:
+
+\code
+  ./venv/bin/python manage.py collect static
+\endcode
 
 \section1 Serving static files outside of django app
 

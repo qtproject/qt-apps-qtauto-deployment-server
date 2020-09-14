@@ -32,12 +32,14 @@
 
 # check for file type here.
 # those are expected types
-# ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 2.6.18, not stripped
+# ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked,
+#            interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 2.6.18, not stripped
 # ELF 64-bit LSB shared object, x86-64, version 1 (GNU/Linux), dynamically linked, not stripped
 # ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, not stripped
 # Mach-O 64-bit x86_64 dynamically linked shared library
 # Mach-O 64-bit x86_64 executable
-# Mach-O universal binary with 2 architectures: [x86_64: Mach-O 64-bit x86_64 bundle] [i386: Mach-O i386 bundle] []
+# Mach-O universal binary with 2 architectures:
+#        [x86_64: Mach-O 64-bit x86_64 bundle] [i386: Mach-O i386 bundle] []
 # PE32+ executable (console) x86-64, for MS Windows
 # PE32+ executable (DLL) (console) x86-64, for MS Windows
 # PE32+ executable (DLL) (GUI) x86-64, for MS Windows
@@ -45,21 +47,21 @@
 
 import re
 
-def parseMachO(str):  # os, arch, bits, endianness
-    if " universal " in str:
+def parseMachO(string_data):  # os, arch, bits, endianness
+    if " universal " in string_data:
         # Universal binary - not supported
         raise Exception("Universal binaries are not supported in packages")
     os = "macOS"
-    arch = str.split(' ')
+    arch = string_data.split(' ')
     arch = arch[2]
-    bits = str.split(' ')[1].replace('-bit', '')
+    bits = string_data.split(' ')[1].replace('-bit', '')
     endianness = "little_endian"
     return [os, arch, bits, endianness]
 
 
-def parsePE32(str):
+def parsePE32(string_data):
     os = "Windows"
-    arch = str.split(',')
+    arch = string_data.split(',')
     arch = arch[0]  # Take first part
     arch = arch.split(' ')
     arch = arch[-1]  # Take last element
@@ -72,12 +74,13 @@ def parsePE32(str):
     return [os, arch, bits, endianness]
 
 
-def parseElfArch(str, architecture, bits):
+def parseElfArch(string_data, architecture, bits):
     architecture = architecture.strip()
     if architecture.startswith("ARM"):
         if 'aarch64' in architecture:
             return 'arm64'
-        if 'armhf' in str:  # this does not work for some reason - from_file() returns longer data than from_buffer() - needs fix
+        if 'armhf' in string_data:  # this does not work for some reason - from_file() returns
+                                    # longer data than from_buffer() - needs fix
             return 'arm'    # because qt does not report it directly
     elif architecture.startswith("Intel"):
         if '80386' in architecture:
@@ -93,13 +96,13 @@ def parseElfArch(str, architecture, bits):
     return architecture.lower()
 
 
-def parseElf(str):
+def parseElf(string_data):
     os = "Linux"
-    arch = str.split(',')
+    arch = string_data.split(',')
     arch = arch[1]
-    bits = str.split(' ')[1].replace('-bit', '')
-    arch = parseElfArch(str, arch, bits)
-    endian = str.split(' ')[2].lower()
+    bits = string_data.split(' ')[1].replace('-bit', '')
+    arch = parseElfArch(string_data, arch, bits)
+    endian = string_data.split(' ')[2].lower()
     if endian == "msb":
         endianness = "big_endian"
     elif endian == "lsb":
@@ -109,21 +112,21 @@ def parseElf(str):
     return [os, arch, bits, endianness]
 
 
-def getOsArch(str):
+def getOsArch(string_data):
     os = None
     arch = None
     bits = None
     endianness = None
     fmt = None
-    if str.startswith("ELF "):
+    if string_data.startswith("ELF "):
         fmt = "elf"
-        os, arch, bits, endianness = parseElf(str)
-    elif str.startswith("Mach-O "):
+        os, arch, bits, endianness = parseElf(string_data)
+    elif string_data.startswith("Mach-O "):
         fmt = "mach_o"
-        os, arch, bits, endianness = parseMachO(str)
-    elif str.startswith("PE32+ ") or str.startswith("PE32 "):
+        os, arch, bits, endianness = parseMachO(string_data)
+    elif string_data.startswith("PE32+ ") or string_data.startswith("PE32 "):
         fmt = "pe32"
-        os, arch, bits, endianness = parsePE32(str)
+        os, arch, bits, endianness = parsePE32(string_data)
     if arch:
         arch = arch.replace('-', '_')
     result = [os, arch, endianness, bits, fmt]
@@ -133,8 +136,10 @@ def getOsArch(str):
 
 def normalizeArch(inputArch):
     """
-        This function brings requested architecture to common form (currently just parses the bits part and turns it into 32/64)
-        Input string format is: arch-endianness-word_size-kernelType
+    This function brings requested architecture to common form (currently just parses the bits
+        part and turns it into 32/64)
+    Input string format is: arch-endianness-word_size-optional_ABI-kernelType
+    Output string format is: arch-endianness-word_size-kernelType
 
     """
     parts = inputArch.split('-')
@@ -143,15 +148,16 @@ def normalizeArch(inputArch):
     #Drop anything non-numeric from word_size field
     parts[2]=re.sub(r"\D", "", parts[2])
     #Transform kernelType into binary format
-    temp = parts[3]
-    if "win" in temp:
-        parts[3]="pe32"
+    temp = parts[-1] #the last element is kernel type
+    if "darwin" in temp:
+        parts[3]="mach_o"
     elif "linux" in  temp:
         parts[3]="elf"
     elif "freebsd" in temp: #How do we treat QNX?
         parts[3]="elf"
-    elif "darwin" in temp:
-        parts[3]="mach_o"
+    elif "win" in temp:
+        parts[3]="pe32"
+    parts=parts[0:4] # now format drops optional part
     #Rejoin new architecture
     arch = '-'.join(parts)
     return arch

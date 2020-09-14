@@ -28,8 +28,10 @@
 
 /*!
     \page qtauto-deployment-server-reference.html
-    \previouspage Qt Automotive Suite Deployment Server
-    \contentspage Qt Automotive Suite
+    \previouspage Qt Automotive Suite Deployment Server Installation
+    \nextpage Set up a Production server with Apache, Lighttpd or Nginx
+    \contentspage {Qt Automotive Suite Deployment Server}
+    \startpage Qt Automotive Suite Deployment Server
 
     \title Qt Automotive Suite Deployment Server API Reference
 
@@ -55,15 +57,10 @@
             \li The Deployment Server's HTTP API version that you are using to communicate with the
                 server. For more information, see \c{settings.APPSTORE_VERSION}.
         \row
-            \li require_tag
+            \li require_tag (can also be passed as \c{tag} )
             \li An optional parameter used to filter packages by tags. Receives a comma-separated
-                list of tags; these tags must be alphanumeric. Only applications that contain any
-                of the specified tags should be listed.
-        \row
-            \li conflicts_tag
-            \li An optional parameter used to filter packages by tags. Receives a comma-separated
-                list of tags; these tags must be alphanumeric. Applications that contain any of the
-                speicifed tags should be excluded.
+                list of tags; these tags must be alphanumeric. Only applications that match any of the
+                specified tags (and not matching those in their conflicts list should be listed).
         \row
             \li architecture
             \li An optional parameter used to filter packages by architecture. Receives the CPU
@@ -101,7 +98,7 @@
 
     \section2 login
 
-    Logs onto the deployment server with the given username and password.
+    Logs onto the Deployment Server with the given username and password.
     Either an IMEI or a unique hardware identifier, such as a MAC address,
     must be provided. This call is necessary to be able to download apps.
     \table
@@ -139,7 +136,7 @@
     \endtable
 
     \section2 logout
-    Logs out the currently logged-in user from the deployment server.
+    Logs out the currently logged-in user from the Deployment Server.
 
     Returns a JSON object with the following fields and values.
     \table
@@ -190,7 +187,10 @@
             \li A category name for the app.
         \row
             \li tags
-            \li JSON array of app tags
+            \li JSON array of tags required for the app
+        \row
+            \li conflict_tags
+            \li JSON array of tags which will conflict with the app
         \row
             \li version
             \li The app's version, returned as a string. If the there is no version number, the
@@ -216,6 +216,14 @@
         \row
             \li category_id
             \li Numeric category ID that matches the app's category.
+        \row
+            \li purchaseId
+            \li Purchase identifier, freeform identifier of specific application on the server.
+            Used as an alternative to ID in \c{app/purchase} API call. This is a freeform string,
+            currently a UUID, but no assumptions should be made of the format.
+        \row
+            \li iconUrl
+            \li URL for the icon of this application
     \endtable
 
     \section2 app/icon
@@ -270,6 +278,10 @@
          \row
              \li id
              \li The app ID.
+         \row
+             \li purchaseId
+             \li Alternative app ID, to select specific app with tags and all (see \c{app/list} API description).
+             If both ID and purchaseId are specified, ID takes precedence.
      \endtable
      Returns a JSON object:
      \table
@@ -284,7 +296,7 @@
          \row
              \li failed
              \li
-             \li An error has occurred, dheck the error field for more information.
+             \li An error has occurred, check the error field for more information.
          \row
              \li error
              \li Text.

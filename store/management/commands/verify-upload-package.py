@@ -30,7 +30,7 @@
 ##
 #############################################################################
 
-import sys
+import argparse
 
 from django.core.management.base import BaseCommand, CommandError
 
@@ -39,14 +39,21 @@ from store.utilities import parseAndValidatePackageMetadata
 class Command(BaseCommand):
     help = 'Checks if packages are valid for store upload'
 
+    def add_arguments(self, parser):
+        parser.add_argument('package',
+                            metavar='package',
+                            type=argparse.FileType('rb'),
+                            nargs=1,
+                            help='package file to verify')
+
     def handle(self, *args, **options):
-        if len(args) != 1:
+        if not options["package"]:
             raise CommandError('Usage: manage.py verify-upload-package <package>')
 
         try:
-            self.stdout.write('Parsing package %s' % args[0])
-            packageFile = open(args[0], 'rb')
-            pkgdata = parseAndValidatePackageMetadata(packageFile)
+            self.stdout.write('Parsing package %s' % options['package'][0].name)
+            package_file = options['package'][0]
+            pkgdata = parseAndValidatePackageMetadata(package_file)
 
             self.stdout.write('  -> passed validation (internal name: %s)\n' % pkgdata['storeName'])
 

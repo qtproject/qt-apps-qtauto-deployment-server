@@ -30,31 +30,51 @@
 ##
 #############################################################################
 
+import argparse
+
 from django.core.management.base import BaseCommand, CommandError
-from django.conf import settings
 
 from store.utilities import parseAndValidatePackageMetadata, addSignatureToPackage
 
 class Command(BaseCommand):
     help = 'Adds a store signature to the package'
 
-    def handle(self, *args, **options):
-        if 2 > len(args) > 3:
-            raise CommandError('Usage: manage.py store-sign-package <source package> <destination-package> [device id]')
+    def add_arguments(self, parser):
+        parser.add_argument('source-package',
+                            metavar='sourcepackage',
+                            type=argparse.FileType('rb'),
+                            nargs=1,
+                            help='package file to sign')
+        parser.add_argument('destination-package',
+                            metavar='destinationpackage',
+                            type=str,
+                            nargs=1,
+                            help='signed package file destination')
+        parser.add_argument('device ID',
+                            metavar='deviceID',
+                            type=str,
+                            nargs='?',
+                            default="",
+                            help='device ID')
 
-        sourcePackage = args[0]
-        destinationPackage = args[1]
-        deviceId = args[2] if len(args) == 3 else ''
+    def handle(self, *args, **options):
+        if not options["source-package"]:
+            raise CommandError('Usage: manage.py store-sign-package <source package>\
+ <destination-package> [device id]')
+
+        source_package = options["source-package"]
+        destination_package = options["destination-package"][0]
+        device_id = options["device ID"]
 
         try:
-            self.stdout.write('Parsing package %s' % sourcePackage)
-            packageFile = open(sourcePackage, 'rb')
-            pkgdata = parseAndValidatePackageMetadata(packageFile)
+            self.stdout.write('Parsing package %s' % source_package[0].name)
+            package_file = source_package[0]
+            pkgdata = parseAndValidatePackageMetadata(package_file)
             self.stdout.write('  -> passed validation (internal name: %s)\n' % pkgdata['storeName'])
 
-            self.stdout.write('Adding signature to package %s' % destinationPackage)
-            addSignatureToPackage(sourcePackage, destinationPackage, pkgdata['rawDigest'],
-                                  deviceId, pkgdata['packageFormat']['formatVersion'])
+            self.stdout.write('Adding signature to package %s' % destination_package)
+            addSignatureToPackage(source_package[0].name, destination_package, pkgdata['rawDigest'],
+                                  device_id, pkgdata['packageFormat']['formatVersion'])
             self.stdout.write('  -> finished')
 
         except Exception as error:

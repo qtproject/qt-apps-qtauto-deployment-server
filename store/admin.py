@@ -30,15 +30,14 @@
 ##
 #############################################################################
 
-import StringIO
+import io
 from PIL import Image, ImageChops
 
 from django import forms
 from django.contrib import admin
-from django.utils.translation import ugettext as _
-from django.utils.translation import ugettext_lazy
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from ordered_model.admin import OrderedModelAdmin
+from django.utils.safestring import mark_safe
 
 from store.models import *
 from store.utilities import parseAndValidatePackageMetadata, writeTempIcon, makeTagList
@@ -68,10 +67,11 @@ class CategoryAdminForm(forms.ModelForm):
                 im = Image.open(cleaned_data['icon'])
             size = (settings.ICON_SIZE_X, settings.ICON_SIZE_Y)
             im.thumbnail(size, Image.ANTIALIAS)
-            imagefile = StringIO.StringIO()
+            imagefile = io.BytesIO()
             im.save(imagefile, format='png')
+            length = imagefile.tell()
             imagefile.seek(0)
-            cleaned_data['icon'] = InMemoryUploadedFile(imagefile, 'icon', "icon.png", 'image/png', imagefile.len, None)
+            cleaned_data['icon'] = InMemoryUploadedFile(imagefile, 'icon', "icon.png", 'image/png', length, None)
         return cleaned_data
 
 class CategoryAdmin(OrderedModelAdmin):
@@ -85,16 +85,15 @@ class CategoryAdmin(OrderedModelAdmin):
     def name(self, obj):
         # just to forbid sorting by name
         return obj.name
-    name.short_description = ugettext_lazy('Item caption')
+    name.short_description = u'Item caption'
 
     def icon_image(self, obj):
         prefix = settings.URL_PREFIX
         image_request = prefix + "/category/icon?id=%s" % (obj.id)
-        html = u'<img width=%s height=%s src="%s" />' % (settings.ICON_SIZE_X, settings.ICON_SIZE_Y, image_request)
-        return html
+        html = '<img width=%s height=%s src="%s" />' % (settings.ICON_SIZE_X, settings.ICON_SIZE_Y, image_request)
+        return mark_safe(html)
 
-    icon_image.allow_tags = True
-    icon_image.short_description = ugettext_lazy('Category icon')
+    icon_image.short_description = u'Category icon'
 
 
 class AppAdminForm(forms.ModelForm):
@@ -113,7 +112,7 @@ class AppAdminForm(forms.ModelForm):
         try:
             pkgdata = parseAndValidatePackageMetadata(package_file)
         except Exception as error:
-            raise forms.ValidationError(_('Validation error: %s' % str(error)))
+            raise forms.ValidationError('Validation error: %s' % str(error))
 
         self.appId = pkgdata['info']['id']
         self.name = pkgdata['storeName']
@@ -123,27 +122,27 @@ class AppAdminForm(forms.ModelForm):
         # check if this really is an update
         if hasattr(self, 'instance') and self.instance.appid:
             if self.appId != self.instance.appid:
-                raise forms.ValidationError(_('Validation error: an update cannot change the '
-                                              'application id, tried to change from %s to %s' %
-                                              (self.instance.appid, self.appId)))
+                raise forms.ValidationError('Validation error: an update cannot change the '
+                                            'application id, tried to change from %s to %s' %
+                                            (self.instance.appid, self.appId))
             elif self.architecture != self.instance.architecture:
-                raise forms.ValidationError(_('Validation error: an update cannot change the '
-                                              'application architecture from %s to %s' %
-                                              (self.instance.architecture, self.architecture)))
+                raise forms.ValidationError('Validation error: an update cannot change the '
+                                            'application architecture from %s to %s' %
+                                            (self.instance.architecture, self.architecture))
         else:
             try:
                 if App.objects.get(appid__exact=self.appId, architecture__exact=self.architecture, tags_hash__exact=self.tags_hash):
-                    raise forms.ValidationError(_('Validation error: another application with id'
-                                                  ' %s , tags %s and architecture %s already '
-                                                  'exists' % (str(self.appId), str(self.tags_hash),
-                                                              str(self.architecture))))
+                    raise forms.ValidationError('Validation error: another application with id'
+                                                ' %s , tags %s and architecture %s already '
+                                                'exists' % (str(self.appId), str(self.tags_hash),
+                                                            str(self.architecture)))
             except App.DoesNotExist:
                 pass
 
         # write icon into file to serve statically
         success, error = writeTempIcon(self.appId, self.architecture, self.tags_hash, pkgdata['icon'])
         if not success:
-            raise forms.ValidationError(_(error))
+            raise forms.ValidationError(error)
 
         return cleaned_data
 

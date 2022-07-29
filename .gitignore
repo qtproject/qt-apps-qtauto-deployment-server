@@ -1,9 +1,3 @@
 *~
 *.pyc
-db.sqlite3
-media/
-static/
-certificates/
-.idea/*
-venv/*
-static/*
+data/*

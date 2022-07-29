@@ -27,12 +27,18 @@
 ****************************************************************************/
 
 /*!
-    \page qtauto-deployment-server-index.html
-    \contentspage {Qt Automotive Suite}
+    \ingroup qtauto-deployment-server
+    \page index.html
     \nextpage Qt Automotive Suite Deployment Server Installation
     \startpage Qt Automotive Suite Deployment Server
 
     \title Qt Automotive Suite Deployment Server
+
+    \note This project is not maintained anymore. It was ported to a Qt 6 cmake setup and a more
+          modern Django and Python version to at least keep it usable for legacy projects.
+          For non-production use-cases, please switch to the new
+          \l{Package-Server}{appman-package-server}
+          available in the \l{Qt Application Manager} starting with version 6.7.
 
     The Qt Automotive Suite Deployment Server is a new component in the Qt Automotive Suite 5.12.
     Previously, it was known as the Neptune Appstore and used for demonstrations purposes.

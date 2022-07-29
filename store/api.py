@@ -33,6 +33,7 @@
 import os
 import shutil
 import hashlib
+import logging
 
 from django.conf import settings
 from django.db.models import Q, Count
@@ -89,7 +90,6 @@ def hello(request):
     else:
         request.session['architecture'] = ''
 
-    request.session['pkgversions'] = range(1, version + 1)
     return JsonResponse({'status': status})
 
 
@@ -120,7 +120,7 @@ def login(request):
 def logout(request):
     status = 'ok'
 
-    if not request.user.is_authenticated():
+    if not request.user.is_authenticated:
         status = 'failed'
     logout(request)
 
@@ -201,12 +201,7 @@ def appList(request):
     if 'architecture' in request.session:
         archlist.append(request.session['architecture'])
 
-    versionlist = [1]
-    if 'pkgversions' in request.session:
-        versionlist = request.session['pkgversions']
-
     apps = apps.filter(architecture__in=archlist)
-    apps = apps.filter(pkgformat__in=versionlist)
 
     #Tag filtering
     #There is no search by version distance yet - this must be fixed
@@ -261,13 +256,9 @@ def appDescription(request):
     archlist = ['All', ]
     if 'architecture' in request.session:
         archlist.append(request.session['architecture'])
-    versionlist = [1]
-    if 'pkgversions' in request.session:
-        versionlist = request.session['pkgversions']
     appId = getRequestDictionary(request)['id']
     try:
         app = App.objects.filter(appid__exact = appId, architecture__in = archlist).order_by('architecture','tags_hash')
-        app = app.filter(pkgformat__in=versionlist)
         #Tag filtering
         #There is no search by version distance yet - this must be fixed
         if 'tag' in request.session:
@@ -285,7 +276,7 @@ def appIconNew(request, path):
     path=path.replace('/', '_').replace('\\', '_').replace(':', 'x3A').replace(',', 'x2C') + '.png'
     try:
         response = HttpResponse(content_type='image/png')
-        with open(iconPath() + path, 'rb') as pkg:
+        with open(os.path.join(settings.MEDIA_ROOT, iconPath(), path), 'rb') as pkg:
             response.write(pkg.read())
             response['Content-Length'] = pkg.tell()
         return response
@@ -299,22 +290,20 @@ def appIcon(request):
         archlist.append(normalizeArch(dictionary['architecture']))
     elif 'architecture' in request.session:
         archlist.append(request.session['architecture'])
-    versionlist = [1]
-    if 'pkgversions' in request.session:
-        versionlist = request.session['pkgversions']
     appId = dictionary['id']
     try:
-        app = App.objects.filter(appid__exact = appId, architecture__in = archlist).order_by('architecture','tags_hash')
-        app = app.filter(pkgformat__in=versionlist)
+        apps = App.objects.filter(appid__exact = appId, architecture__in = archlist).order_by('architecture','tags_hash')
         #Tag filtering
         #There is no search by version distance yet - this must be fixed
         if 'tag' in request.session:
             tags = SoftwareTagList()
             tags.parse(request.session['tag'])
-            app_ids = [x.id for x in app if x.is_tagmatching(tags.list())]
-            app = App.objects.filter(id__in=app_ids)
-        app = app.last()
-        with open(iconPath(app.appid, app.architecture, app.tags_hash), 'rb') as iconPng:
+            app_ids = [x.id for x in apps if x.is_tagmatching(tags.list())]
+            apps = App.objects.filter(id__in=app_ids)
+        app = apps.last()
+        path = iconPath(app.appid, app.architecture, app.tags_hash)
+        path = os.path.join(settings.MEDIA_ROOT, path)
+        with open(path, 'rb') as iconPng:
             response = HttpResponse(content_type='image/png')
             response.write(iconPng.read())
             return response
@@ -323,14 +312,11 @@ def appIcon(request):
 
 
 def appPurchase(request):
-    if not request.user.is_authenticated():
+    if not request.user.is_authenticated:
         return HttpResponseForbidden('no login')
     archlist = ['All', ]
     if 'architecture' in request.session:
         archlist.append(request.session['architecture'])
-    versionlist = [1]
-    if 'pkgversions' in request.session:
-        versionlist = request.session['pkgversions']
 
     try:
         deviceId = str(getRequestDictionary(request).get("device_id", ""))
@@ -346,7 +332,6 @@ def appPurchase(request):
             app = App.objects.filter(id__exact = getRequestDictionary(request)['purchaseId'], architecture__in=archlist).order_by('architecture','tags_hash')
         else:
             raise ValidationError('id or purchaseId parameter required')
-        app = app.filter(pkgformat__in=versionlist)
         #Tag filtering
         #There is no search by version distance yet - this must be fixed
         if 'tag' in request.session:
@@ -356,7 +341,7 @@ def appPurchase(request):
             app = App.objects.filter(id__in=app_ids)
 
         app = app.last()
-        fromFilePath = packagePath(app.appid, app.architecture, app.tags_hash)
+        fromFilePath = os.path.join(settings.MEDIA_ROOT, packagePath(app.appid, app.architecture, app.tags_hash))
 
         # we should not use obvious names here, but just hash the string.
         # this would be a nightmare to debug though and this is a development server :)
@@ -423,7 +408,7 @@ def categoryIcon(request):
     try:
         if categoryId != '-1':
             category = Category.objects.filter(id__exact = categoryId)[0]
-            filename = iconPath() + "category_" + str(category.id) + ".png"
+            filename = os.path.join(settings.MEDIA_ROOT, iconPath(), "category_" + str(category.id) + ".png")
         else:
             from django.contrib.staticfiles import finders
             filename = finders.find('img/category_All.png')
@@ -439,7 +424,7 @@ def categoryIcon(request):
         # |Error|
         # |     |
         # +-----+
-        emptyPng  = "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00 \x00\x00\x00 \x01\x03\x00\x00\x00I\xb4\xe8\xb7\x00\x00\x00\x06PLTE\x00\x00\x00\x00\x00\x00\xa5\x67\xb9\xcf\x00\x00\x00\x01tRNS\x00@\xe6\xd8f\x00\x00\x00\x33IDAT\x08\xd7\x63\xf8\x0f\x04\x0c\x0d\x0c\x0c\x8c\x44\x13\x7f\x40\xc4\x01\x10\x71\xb0\xf4\x5c\x2c\xc3\xcf\x36\xc1\x44\x86\x83\x2c\x82\x8e\x48\xc4\x5f\x16\x3e\x47\xd2\x0c\xc5\x46\x80\x9c\x06\x00\xa4\xe5\x1d\xb4\x8e\xae\xe8\x43\x00\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82"
+        emptyPng  = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00 \x00\x00\x00 \x01\x03\x00\x00\x00I\xb4\xe8\xb7\x00\x00\x00\x06PLTE\x00\x00\x00\x00\x00\x00\xa5\x67\xb9\xcf\x00\x00\x00\x01tRNS\x00@\xe6\xd8f\x00\x00\x00\x33IDAT\x08\xd7\x63\xf8\x0f\x04\x0c\x0d\x0c\x0c\x8c\x44\x13\x7f\x40\xc4\x01\x10\x71\xb0\xf4\x5c\x2c\xc3\xcf\x36\xc1\x44\x86\x83\x2c\x82\x8e\x48\xc4\x5f\x16\x3e\x47\xd2\x0c\xc5\x46\x80\x9c\x06\x00\xa4\xe5\x1d\xb4\x8e\xae\xe8\x43\x00\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82"
         response.write(emptyPng)
 
     return response

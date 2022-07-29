@@ -79,7 +79,7 @@ class SoftwareTag:
         """ Takes tag and parses it. If it can't parse - raises exception of invalid value
         :type tag: str
         """
-        if not isinstance(tag, (str, unicode)):
+        if not isinstance(tag, str):
             raise BaseException("Invalid input data-type")
         if not validateTag(tag):
             raise BaseException("Malformed tag")
@@ -121,7 +121,7 @@ class SoftwareTagList:
 
     def __str__(self):
         lst = list()
-        for _, value in self.taglist.items():
+        for _, value in list(self.taglist.items()):
             lst += [str(i) for i in value]
         lst.sort()
         return ",".join(lst)
@@ -168,7 +168,7 @@ class SoftwareTagList:
 
     def list(self):
         lst = list()
-        for _, value in self.taglist.items():
+        for _, value in list(self.taglist.items()):
             for i in value:
                 lst.append(i)
         return lst
@@ -188,13 +188,13 @@ class TestSoftwareTagMethods(unittest.TestCase):
         self.assertTrue(tag.has_version())
         tag = SoftwareTag('Qt')
         self.assertFalse(tag.has_version())
-        with self.assertRaisesRegexp(BaseException, "Malformed tag"):
+        with self.assertRaisesRegex(BaseException, "Malformed tag"):
             SoftwareTag('фыва')
-        with self.assertRaisesRegexp(BaseException, "Malformed tag"):
+        with self.assertRaisesRegex(BaseException, "Malformed tag"):
             SoftwareTag('фыва:5.1')
-        with self.assertRaisesRegexp(BaseException, "Malformed tag"):
+        with self.assertRaisesRegex(BaseException, "Malformed tag"):
             SoftwareTag('qt.1:5.1')
-        with self.assertRaisesRegexp(BaseException, "Invalid input data-type"):
+        with self.assertRaisesRegex(BaseException, "Invalid input data-type"):
             SoftwareTag(1)
 
     def test_tag_match(self):
@@ -227,11 +227,11 @@ class TestSoftwareTagListMethods(unittest.TestCase):
 
     def test_append_invalid(self):
         lst = SoftwareTagList()
-        with self.assertRaisesRegexp(BaseException, "Malformed tag"):
+        with self.assertRaisesRegex(BaseException, "Malformed tag"):
             self.assertFalse(lst.append(SoftwareTag('qt:1:1')))  # Invalid version
-        with self.assertRaisesRegexp(BaseException, "Malformed tag"):
+        with self.assertRaisesRegex(BaseException, "Malformed tag"):
             self.assertFalse(lst.append(SoftwareTag('фыва')))  # Non-ascii
-        with self.assertRaisesRegexp(BaseException, "Malformed tag"):
+        with self.assertRaisesRegex(BaseException, "Malformed tag"):
             self.assertFalse(lst.append(SoftwareTag('')))  # empty tag is not valid
 
     def test_append_valid(self):

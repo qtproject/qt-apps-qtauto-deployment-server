@@ -70,28 +70,29 @@ def getRequestDictionary(request):
     return request.GET
 
 def packagePath(appId=None, architecture=None, tags=None):
-    path = settings.MEDIA_ROOT + 'packages/'
+    path = "packages" ## os.path.join(settings.MEDIA_ROOT, 'packages/')
     if tags is None:
         tags = ""
     if (appId is not None) and (architecture is not None):
-        path = path + '_'.join([appId, architecture, tags]).replace('/', '_').\
-            replace('\\', '_').replace(':', 'x3A').replace(',', 'x2C')
+        path = os.path.join(path, '_'.join([appId, architecture, tags]).replace('/', '_').\
+            replace('\\', '_').replace(':', 'x3A').replace(',', 'x2C'))
     return path
 
 def iconPath(appId=None, architecture=None, tags=None):
-    path = settings.MEDIA_ROOT + 'icons/'
+    path = "icons" ## os.path.join(settings.MEDIA_ROOT, 'icons/')
     if tags is None:
         tags = ""
     if (appId is not None) and (architecture is not None):
-        return path + '_'.join([appId, architecture, tags]).replace('/', '_').\
-            replace('\\', '_').replace(':', 'x3A').replace(',', 'x2C') + '.png'
+        return os.path.join(path, '_'.join([appId, architecture, tags]).replace('/', '_').\
+            replace('\\', '_').replace(':', 'x3A').replace(',', 'x2C') + '.png')
     return path
 
 def writeTempIcon(appId, architecture, tags, icon):
     try:
-        if not os.path.exists(iconPath()):
-            os.makedirs(iconPath())
-        tempicon = open(iconPath(appId, architecture, tags), 'w')
+        path = os.path.join(settings.MEDIA_ROOT, iconPath())
+        if not os.path.exists(path):
+            os.makedirs(path)
+        tempicon = open(os.path.join(settings.MEDIA_ROOT, iconPath(appId, architecture, tags)), 'wb')
         tempicon.write(icon)
         tempicon.flush()
         tempicon.close()
@@ -101,46 +102,41 @@ def writeTempIcon(appId, architecture, tags, icon):
             str(error)
 
 def downloadPath():
-    return settings.MEDIA_ROOT + 'downloads/'
+    return os.path.join(settings.MEDIA_ROOT, 'downloads/')
 
 
-def isValidDnsName(dnsName, errorList):
-    # see also in AM: src/common-lib/utilities.cpp / isValidDnsName()
+def isValidFilesystemName(name, errorList):
+    # see also in AM: src/common-lib/utilities.cpp / validateForFilesystemUsage
 
     try:
-        # this is not based on any RFC, but we want to make sure that this id is usable as filesystem
-        # name. So in order to support FAT (SD-Cards), we need to keep the path < 256 characters
+        # we need to make sure that we can use the name as directory in a filesystem and inode names
+        # are limited to 255 characters in Linux. We need to subtract a safety margin for prefixes
+        # or suffixes though:
 
-        if len(dnsName) > 200:
-            raise Exception('too long - the maximum length is 200 characters')
+        if not name:
+            raise Exception('must not be empty')
 
-        # we require at least 3 parts: tld.company-name.application-name
-        # this make it easier for humans to identify apps by id.
+        if len(name) > 150:
+            raise Exception('the maximum length is 150 characters')
 
-        labels = dnsName.split('.')
-        if len(labels) < 3:
-            raise Exception('wrong format - needs to be in reverse-DNS notation and consist of at least three parts separated by .')
+        # all characters need to be ASCII minus any filesystem special characters:
+        spaceOnly = True
+        forbiddenChars = '<>:"/\\|?*'
+        for i, c in enumerate(name):
+            if (ord(c) < 0x20) or (ord(c) > 0x7f) or (c in forbiddenChars):
+                raise Exception(f'must consist of printable ASCII characters only, except any of \'{forbiddenChars}\'')
 
-        # standard domain name requirements from the RFCs 1035 and 1123
+            if spaceOnly:
+                spaceOnly = (c == ' ')
 
-        for label in labels:
-            if 0 >= len(label) > 63:
-                raise Exception('wrong format - each part of the name needs to at least 1 and at most 63 characters')
-
-            for i, c in enumerate(label):
-                isAlpha = (c >= '0' and c <= '9') or (c >= 'a' and c <= 'z');
-                isDash  = (c == '-');
-                isInMiddle = (i > 0) and (i < (len(label) - 1));
-
-                if not (isAlpha or (isDash and isInMiddle)):
-                    raise Exception('invalid characters - only [a-z0-9-] are allowed (and '-' cannot be the first or last character)')
+        if spaceOnly:
+            raise Exception('must not consist of only white-space characters')
 
         return True
 
     except Exception as error:
         errorList[0] = str(error)
         return False
-
 
 def verifySignature(signaturePkcs7, hash, chainOfTrust):
     # see also in AM: src/crypto-lib/signature.cpp / Signature::verify()
@@ -256,7 +252,7 @@ def parsePackageMetadata(packageFile):
             raise Exception('the first file in the package is not --PACKAGE-HEADER--, but %s' % entry.name)
 
         if entry.name.startswith('--PACKAGE-FOOTER--'):
-            footerContents += contents
+            footerContents += contents.decode('utf-8')
 
             foundFooter = True
         elif foundFooter:
@@ -264,10 +260,11 @@ def parsePackageMetadata(packageFile):
 
         if not entry.name.startswith('--PACKAGE-'):
             addToDigest1 = '%s/%s/' % ('D' if entry.isdir() else 'F', 0 if entry.isdir() else entry.size)
+            addToDigest1 = addToDigest1.encode('utf-8')
             entryName = entry.name
             if entry.isdir() and entryName.endswith('/'):
                 entryName = entryName[:-1]
-            addToDigest2 = unicode(entryName, 'utf-8').encode('utf-8')
+            addToDigest2 = str(entryName).encode('utf-8')
 
             if entry.isfile():
                 digest.update(contents)
@@ -380,7 +377,7 @@ def parseAndValidatePackageMetadata(packageFile, certificates = []):
                    'icon':   [],
                    'digest': [] }
 
-    for part in partFields.keys():
+    for part in list(partFields.keys()):
         if not part in pkgdata:
             raise Exception('package metadata is missing the %s part' % part)
         data = pkgdata[part]
@@ -393,7 +390,7 @@ def parseAndValidatePackageMetadata(packageFile, certificates = []):
         raise Exception('the id fields in --PACKAGE-HEADER-- and info.yaml are different: %s vs. %s' % (pkgdata['header'][packageIdKey], pkgdata['info']['id']))
 
     error = ['']
-    if not isValidDnsName(pkgdata['info']['id'], error):
+    if not isValidFilesystemName(pkgdata['info']['id'], error):
         raise Exception('invalid id: %s' % error[0])
 
     if pkgdata['header']['diskSpaceUsed'] <= 0:
@@ -408,7 +405,7 @@ def parseAndValidatePackageMetadata(packageFile, certificates = []):
     elif 'en_US' in pkgdata['info']['name']:
         name = pkgdata['info']['name']['en_US']
     elif len(pkgdata['info']['name']) > 0:
-        name = pkgdata['info']['name'].values()[0]
+        name = list(pkgdata['info']['name'].values())[0]
 
     if not name:
         raise Exception('could not deduce a suitable package name from the info part')
@@ -456,7 +453,7 @@ def addFileToPackage(sourcePackageFile, destinationPackageFile, fileName, fileCo
         entry = dst.gettarinfo(fileobj = tmp, arcname = fileName)
         entry.uid = entry.gid = 0
         entry.uname = entry.gname = ''
-        entry.mode = 0400
+        entry.mode = 0o400
         dst.addfile(entry, fileobj = tmp)
 
     dst.close()

@@ -27,10 +27,10 @@
 ****************************************************************************/
 
 /*!
-    \page qtauto-deployment-server-reference.html
+    \ingroup qtauto-deployment-server
+    \page reference.html
     \previouspage Qt Automotive Suite Deployment Server Installation
     \nextpage Set up a Production server with Apache, Lighttpd or Nginx
-    \contentspage {Qt Automotive Suite Deployment Server}
     \startpage Qt Automotive Suite Deployment Server
 
     \title Qt Automotive Suite Deployment Server API Reference

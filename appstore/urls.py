@@ -30,26 +30,26 @@
 ##
 #############################################################################
 
-from django.conf.urls import include, url
+from django.urls import include, re_path
 from django.contrib import admin
 from store import api as store_api
 from appstore.settings import URL_PREFIX
 
 base_urlpatterns = [
-    url(r'^admin/', include(admin.site.urls)),
+    re_path(r'^admin/',             admin.site.urls),
 
-    url(r'^hello$',             store_api.hello),
-    url(r'^login$',             store_api.login),
-    url(r'^logout$',            store_api.logout),
-    url(r'^app/list$',          store_api.appList),
-    url(r'^app/icons/(.*)$',    store_api.appIconNew),
-    url(r'^app/icon',           store_api.appIcon),
-    url(r'^app/description',    store_api.appDescription),
-    url(r'^app/purchase',       store_api.appPurchase),
-    url(r'^app/download/(.*)$', store_api.appDownload),
-    url(r'^category/list$',     store_api.categoryList),
-    url(r'^category/icon$',     store_api.categoryIcon),
-    url(r'^upload$',            store_api.upload),
+    re_path(r'^hello$',             store_api.hello),
+    re_path(r'^login$',             store_api.login),
+    re_path(r'^logout$',            store_api.logout),
+    re_path(r'^app/list$',          store_api.appList),
+    re_path(r'^app/icon$',          store_api.appIcon),
+    re_path(r'^app/icons/(.*)$',    store_api.appIconNew),
+    re_path(r'^app/description',    store_api.appDescription),
+    re_path(r'^app/purchase',       store_api.appPurchase),
+    re_path(r'^app/download/(.*)$', store_api.appDownload),
+    re_path(r'^category/list$',     store_api.categoryList),
+    re_path(r'^category/icon$',     store_api.categoryIcon),
+    re_path(r'^upload$',            store_api.upload),
 ]
 
 
@@ -58,6 +58,6 @@ if URL_PREFIX != '':
     prefix = prefix + URL_PREFIX + '/'
 
 urlpatterns = [
-    url(prefix, include(base_urlpatterns)),
+    re_path(prefix, include(base_urlpatterns)),
 ]
 

@@ -27,13 +27,23 @@
 ****************************************************************************/
 
 /*!
-    \page qtauto-deployment-server-installation.html
-    \contentspage {Qt Automotive Suite Deployment Server}
+    \ingroup qtauto-deployment-server
+    \page installation.html
     \previouspage Qt Automotive Suite Deployment Server
     \nextpage Qt Automotive Suite Deployment Server API Reference
     \startpage Qt Automotive Suite Deployment Server
 
     \title Qt Automotive Suite Deployment Server Installation
+
+    \section1 Set up the Server in a Docker Container
+
+    The new recommended way to run this server is through the supplied \c Dockerfile and the
+    \c docker-manage.sh script, which can both be found in the modules root directory.
+
+    Instead of messing with Django's project configuration, you can simply export your individual
+    settings as environment variables.  Either directly in the \c Dockerfile when building the
+    container, or by copying and modifying the \c docker-manage.sh script.
+
 
     \section1 Set up the Server in a Virtual Environment
 

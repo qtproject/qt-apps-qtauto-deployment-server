@@ -1,7 +1,7 @@
 PyYAML
-django==1.11.27
+django==4.0.6
 django-common
-django-ordered-model==2.1
+django-ordered-model
 pyOpenSSL
 M2Crypto
 Enum34
@@ -10,4 +10,4 @@ cffi
 paramiko
 cryptography
 pillow
-python-magic==0.4.15
+python-magic

@@ -27,10 +27,10 @@
 ****************************************************************************/
 
 /*!
-    \page qtauto-deployment-server-package-upload.html
+    \ingroup qtauto-deployment-server
+    \page package-upload.html
     \previouspage Set up a Production server with Apache, Lighttpd or Nginx
     \nextpage Qt Automotive Suite Deployment Server
-    \contentspage {Qt Automotive Suite Deployment Server}
     \startpage Qt Automotive Suite Deployment Server
 
 
@@ -43,7 +43,7 @@ server itself.
 \section1 Through Server Admin Page
 
 This was the first uploading method implemented. It uses django admin page, accessible by \c{/admin/} URL of
-the Deployment Server. For Qt 5.14, the URL is \l{http://demoappsdeploy.qt.io:8514/admin/}.
+the Deployment Server.
 
 To add application:
 \list

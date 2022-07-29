@@ -41,17 +41,16 @@ https://docs.djangoproject.com/en/1.7/ref/settings/
 """
 import os
 
-APPSTORE_MAINTENANCE = False
-APPSTORE_PLATFORM_ID = 'NEPTUNE3'
-APPSTORE_PLATFORM_VERSION = 2     # Maximum supported platform version:
-                                  # version 1 - only old package format
-                                  # version 2 - old and new package formats
-APPSTORE_DOWNLOAD_EXPIRY = 10     # in minutes
-APPSTORE_BIND_TO_DEVICE_ID = True # unique downloads for each device
-APPSTORE_NO_SECURITY = True       # ignore developer signatures and do not generate store signatures
-APPSTORE_STORE_SIGN_PKCS12_CERTIFICATE = 'certificates/store.p12'
-APPSTORE_STORE_SIGN_PKCS12_PASSWORD = 'password'
-APPSTORE_DEV_VERIFY_CA_CERTIFICATES = ['certificates/ca.crt', 'certificates/devca.crt']
+APPSTORE_MAINTENANCE       = False
+APPSTORE_PLATFORM_ID       = os.getenv('APPSTORE_PLATFORM_ID', default = 'NEPTUNE3')
+APPSTORE_PLATFORM_VERSION  = int(os.getenv('APPSTORE_PLATFORM_VERSION', default = '2'))
+APPSTORE_DOWNLOAD_EXPIRY   = int(os.getenv('APPSTORE_DOWNLOAD_EXPIRY', default = '10'))     # in minutes
+APPSTORE_BIND_TO_DEVICE_ID = os.getenv('APPSTORE_BIND_TO_DEVICE_ID', default = '1') == '1' # unique downloads for each device
+APPSTORE_NO_SECURITY       = os.getenv('APPSTORE_NO_SECURITY', default = '1') == '1'        # ignore developer signatures and do not generate store signatures
+APPSTORE_STORE_SIGN_PKCS12_CERTIFICATE = os.getenv('APPSTORE_STORE_SIGN_PKCS12_CERTIFICATE', default = 'certificates/store.p12')
+APPSTORE_STORE_SIGN_PKCS12_PASSWORD    = os.getenv('APPSTORE_STORE_SIGN_PKCS12_PASSWORD', default = 'password')
+APPSTORE_DEV_VERIFY_CA_CERTIFICATES    = os.getenv('APPSTORE_DEV_VERIFY_CA_CERTIFICATES', ','.join(['certificates/ca.crt', 'certificates/devca.crt'])).split(',')
+APPSTORE_DATA_PATH         = os.getenv('APPSTORE_DATA_PATH', default = '')
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -61,12 +60,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 # See https://docs.djangoproject.com/en/1.7/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '4%(o_1zuz@^kjcarw&!5ptvk&#9oa1-83*arn6jcm4idzy1#30'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', default = '4%(o_1zuz@^kjcarw&!5ptvk&#9oa1-83*arn6jcm4idzy1#30')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 TEMPLATES = [
     {
@@ -77,6 +76,7 @@ TEMPLATES = [
             'context_processors': (
                 "django.contrib.auth.context_processors.auth",
                 "django.template.context_processors.debug",
+                "django.template.context_processors.request",
                 "django.template.context_processors.i18n",
                 "django.template.context_processors.media",
                 "django.template.context_processors.static",
@@ -102,12 +102,11 @@ INSTALLED_APPS = (
     'store',
 )
 
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
@@ -116,6 +115,12 @@ ROOT_URLCONF = 'appstore.urls'
 
 WSGI_APPLICATION = 'appstore.wsgi.application'
 
+# Absolute path to the directory that holds media.
+# Example: "/home/media/media.lawrence.com/"
+if not APPSTORE_DATA_PATH:
+  MEDIA_ROOT =  os.path.join(BASE_DIR, 'data/')
+else:
+  MEDIA_ROOT = APPSTORE_DATA_PATH
 
 # Database
 # https://docs.djangoproject.com/en/1.7/ref/settings/#databases
@@ -123,16 +128,16 @@ WSGI_APPLICATION = 'appstore.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'NAME': os.path.join(MEDIA_ROOT, 'db.sqlite3'),
     }
 }
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.7/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = os.getenv('DJANGO_LANGUAGE_CODE', default = 'en-us')
 
-TIME_ZONE = 'Europe/Berlin'
+TIME_ZONE = os.getenv('DJANGO_TIME_ZONE', default = 'Europe/Berlin')
 
 USE_I18N = True
 
@@ -148,9 +153,6 @@ URL_PREFIX = '' # Shouldn't start with '/' in case it is used
 
 STATIC_URL = '/static/'
 
-# Absolute path to the directory that holds media.
-# Example: "/home/media/media.lawrence.com/"
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
@@ -164,3 +166,4 @@ ICON_SIZE_Y = 50
 # If the icon should be transformed to monochrome, with alpha channel, when uploaded or not
 ICON_DECOLOR = False
 
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'

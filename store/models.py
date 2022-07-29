@@ -45,7 +45,7 @@ from store.tags import SoftwareTag
 def category_file_name(instance, filename):
     # filename parameter is unused. See django documentation for details:
     # https://docs.djangoproject.com/en/1.11/ref/models/fields/#django.db.models.FileField.upload_to
-    return settings.MEDIA_ROOT + "icons/category_" +  str(instance.id) + ".png"
+    return "icons/category_" +  str(instance.id) + ".png"
 
 class OverwriteStorage(FileSystemStorage):
     def get_available_name(self, name, max_length=None):
@@ -63,6 +63,9 @@ class Category(OrderedModel):
     def __unicode__(self):
         return self.name
 
+    def __str__(self):
+        return self.name
+
     def save(self, *args, **kwargs):
         if self.id is None:
             # This is a django hack. When category icon is saved and then later accessed,
@@ -77,11 +80,14 @@ class Category(OrderedModel):
         super(Category, self).save(*args, **kwargs)
 
 class Vendor(models.Model):
-    user = models.ForeignKey(User, primary_key = False)
+    user = models.ForeignKey(User, primary_key = False, on_delete = models.CASCADE)
     name = models.CharField(max_length = 200)
     certificate = models.TextField(max_length = 8000)
 
     def __unicode__(self):
+        return self.name
+
+    def __str__(self):
         return self.name
 
 class Tag(models.Model):
@@ -106,8 +112,8 @@ class App(models.Model):
     appid = models.CharField(max_length=200)
     name = models.CharField(max_length=200)
     file = models.FileField(upload_to=content_file_name, storage=OverwriteStorage())
-    vendor = models.ForeignKey(Vendor)
-    category = models.ForeignKey(Category)
+    vendor = models.ForeignKey(Vendor, on_delete = models.CASCADE)
+    category = models.ForeignKey(Category, on_delete = models.CASCADE)
     briefDescription = models.TextField()
     description = models.TextField()
     dateAdded = models.DateField(auto_now_add=True)

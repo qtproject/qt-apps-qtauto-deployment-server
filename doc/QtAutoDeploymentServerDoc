@@ -1,0 +1,3 @@
+// needed for the new clang based qdoc parser in Qt 5.11
+#include <QtAppManMain/QtAppManMain>
+#include <QtCore/QtCore>

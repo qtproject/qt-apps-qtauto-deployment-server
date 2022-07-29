@@ -3,9 +3,14 @@ description                   = Qt Automotive Suite Deployment Server Documentat
 version                       = $QT_VERSION
 url                           = https://doc.qt.io/QtAutoDeploymentServer
 
+# needed for the new clang based qdoc parser
+moduleheader = QtAutoDeploymentServerDoc
+includepaths = -I.
+
 sourcedirs                   += src
 imagedirs                    += src/images
 
+depends += qtcore qtapplicationmanager
 qhp.projects                  = QtAutoDeploymentServer
 
 qhp.QtAutoDeploymentServer.file                = qtautodeploymentserver.qhp
@@ -20,8 +25,8 @@ qhp.QtAutoDeploymentServer.customFilters.Qt.filterAttributes = qtautodeployments
 
 tagfile                       = qtautodeploymentserver.tags
 
-depends                       = qtautomotivesuite
-
-buildversion = "Qt Automotive Suite Deployment Server $QT_VERSION"
-navigation.homepage = "Qt Automotive Suite"
 navigation.landingpage = "Qt Automotive Suite Deployment Server"
+buildversion = "Qt Automotive Suite Deployment Server $QT_VERSION"
+
+# Fail the documentation build if there are more warnings than the limit
+warninglimit = 0

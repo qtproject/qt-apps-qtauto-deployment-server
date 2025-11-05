@@ -1,5 +1,5 @@
 PyYAML
-django==4.0.6
+django==4.2.26
 django-common
 django-ordered-model
 pyOpenSSL
